@@ -21,7 +21,10 @@
 	                Ray     range along the aim direction, first target hit
 	                Cone    range and full angle (degrees) around the aim
 	                None    no targets (self-only actions)
-	  maxTargets  Optional cap on how many targets one hit can damage.
+	  maxTargets  Optional cap on how many targets one hit can damage
+	              (characters and structures are capped separately).
+	  structureMultiplier  Optional damage multiplier against registered
+	              structures (default 1; 0 means it cannot damage them).
 	  damage      Base damage per hit.
 	  hits        Optional number of repeated hit checks (default 1).
 	  hitInterval Seconds between repeated hits.
@@ -58,6 +61,7 @@ export type Action = {
 	hitbox: Hitbox,
 	damage: number?,
 	maxTargets: number?,
+	structureMultiplier: number?,
 	hits: number?,
 	hitInterval: number?,
 	falloff: { startRange: number, endRange: number, minMultiplier: number }?,

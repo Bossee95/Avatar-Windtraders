@@ -85,6 +85,25 @@ local targetFilter: ((Player, Model) -> boolean)? = nil
 local damageHandler: ((Player, Humanoid, number, string) -> ())? = nil
 
 local CharacterService: any = nil
+local PDEventService: any = nil
+
+-- Facilities and other structures that take combat damage.
+type Structure = {
+	faction: string?,
+	onDamage: (Player, number, string) -> (),
+}
+local structures: { [Model]: Structure } = {}
+
+local function structureOf(part: BasePart): Model?
+	local model = part:FindFirstAncestorOfClass("Model")
+	while model do
+		if structures[model] then
+			return model
+		end
+		model = model:FindFirstAncestorOfClass("Model")
+	end
+	return nil
+end
 local DeathReviewService: any = nil
 
 -- Who last hit each player's humanoid, for death reports.
@@ -326,6 +345,54 @@ local function damageMultiplier(state: PlayerState): number
 	return 1
 end
 
+local function attackerFaction(player: Player): string?
+	if not CharacterService then
+		return nil
+	end
+	local character = CharacterService:GetActiveCharacter(player)
+	return character and character.faction
+end
+
+-- Structure damage counts only during an active PD (Studio grant-all
+-- skips this so facilities can be tested), and never from the owning
+-- faction.
+local function damageStructures(
+	player: Player,
+	state: PlayerState,
+	actionId: string,
+	action: Actions.Action,
+	hits: { HitDetection.StructureHit }
+)
+	local pdActive = studioGrantAll()
+	if not pdActive and PDEventService then
+		local ok, active = pcall(function()
+			return PDEventService:IsActive()
+		end)
+		pdActive = ok and active == true
+	end
+	if not pdActive then
+		return
+	end
+	local faction = attackerFaction(player)
+	for _, hit in hits do
+		local structure = structures[hit.model]
+		if not structure or (structure.faction ~= nil and structure.faction == faction) then
+			continue
+		end
+		local amount = (action.damage or 0)
+			* (action.structureMultiplier or 1)
+			* damageMultiplier(state)
+			* CombatRules.falloffMultiplier(action, hit.distance)
+		if amount > 0 then
+			local ok, err = pcall(structure.onDamage, player, amount, actionId)
+			if not ok then
+				warn("[CombatService] structure onDamage errored:", err)
+			end
+			setTag(player)
+		end
+	end
+end
+
 local function performHit(
 	player: Player,
 	state: PlayerState,
@@ -339,7 +406,11 @@ local function performHit(
 		return {}
 	end
 	local hitModels = {}
-	for _, hit in HitDetection.query(character, action, aim) do
+	local characterHits, structureHits = HitDetection.query(character, action, aim, structureOf)
+	if #structureHits > 0 then
+		damageStructures(player, state, actionId, action, structureHits)
+	end
+	for _, hit in characterHits do
 		if targetFilter then
 			local ok, allowed = pcall(targetFilter, player, hit.model)
 			if not ok or not allowed then
@@ -599,6 +670,29 @@ function CombatService:SetVariationOwnershipProvider(fn: (Player, string) -> boo
 	end
 end
 
+-- Lets a model take combat damage. Hits from the same faction are ignored
+-- and hits only count during an active PD. onDamage receives the amount
+-- after Actions[actionId].structureMultiplier. Returns an unregister
+-- function; the structure is also unregistered when the model is destroyed.
+function CombatService:RegisterStructure(
+	model: Model,
+	opts: { faction: string?, onDamage: (Player, number, string) -> () }
+): () -> ()
+	assert(typeof(model) == "Instance" and model:IsA("Model"), "RegisterStructure: model must be a Model")
+	assert(
+		type(opts) == "table" and type(opts.onDamage) == "function",
+		"RegisterStructure: onDamage is required"
+	)
+	structures[model] = { faction = opts.faction, onDamage = opts.onDamage }
+	local conn = model.Destroying:Connect(function()
+		structures[model] = nil
+	end)
+	return function()
+		conn:Disconnect()
+		structures[model] = nil
+	end
+end
+
 function CombatService:SetTargetFilter(fn: (Player, Model) -> boolean)
 	targetFilter = fn
 end
@@ -701,6 +795,11 @@ function CombatService:Start()
 		end)
 	else
 		warn("[CombatService] CharacterService not found; only Studio grant-all will allow combat")
+	end
+
+	local okEvent, pdEvents = pcall(Loader.Get, "PDEventService")
+	if okEvent and pdEvents then
+		PDEventService = pdEvents
 	end
 
 	local okPd, permadeath = pcall(Loader.Get, "PermadeathService")

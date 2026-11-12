@@ -70,6 +70,12 @@ function ConfigValidator.validate(): { string }
 				table.insert(problems, `{where}: actions with a hitbox need damage >= 0`)
 			end
 		end
+		if
+			action.structureMultiplier ~= nil
+			and (type(action.structureMultiplier) ~= "number" or action.structureMultiplier < 0)
+		then
+			table.insert(problems, `{where}: structureMultiplier must be a number >= 0`)
+		end
 		if action.hits and action.hits > 1 and not action.hitInterval then
 			table.insert(problems, `{where}: hits > 1 needs hitInterval`)
 		end

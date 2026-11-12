@@ -29,6 +29,14 @@ export type Hit = {
 	distance: number,
 }
 
+export type StructureHit = {
+	model: Model,
+	distance: number,
+}
+
+-- Returns the registered structure a part belongs to, if any.
+export type StructureLookup = (BasePart) -> Model?
+
 local HitDetection = {}
 
 function HitDetection.getRoot(model: Model?): BasePart?
@@ -130,6 +138,45 @@ local function collect(parts: { BasePart }, origin: Vector3): { Hit }
 	return hits
 end
 
+local function collectStructures(
+	parts: { BasePart },
+	origin: Vector3,
+	structureOf: StructureLookup?
+): { StructureHit }
+	if not structureOf then
+		return {}
+	end
+	local best: { [Model]: number } = {}
+	for _, part in parts do
+		local model = structureOf(part)
+		if model then
+			local distance = (part.Position - origin).Magnitude
+			if best[model] == nil or distance < best[model] then
+				best[model] = distance
+			end
+		end
+	end
+	local hits: { StructureHit } = {}
+	for model, distance in best do
+		table.insert(hits, { model = model, distance = distance })
+	end
+	table.sort(hits, function(a, b)
+		return a.distance < b.distance
+	end)
+	return hits
+end
+
+local function trim<T>(list: { T }, max: number?): { T }
+	if not max or #list <= max then
+		return list
+	end
+	local trimmed = table.create(max)
+	for i = 1, max do
+		trimmed[i] = list[i]
+	end
+	return trimmed
+end
+
 local function eyeOrigin(attacker: Model, root: BasePart): Vector3
 	local head = attacker:FindFirstChild("Head")
 	if head and head:IsA("BasePart") then
@@ -144,68 +191,86 @@ local function hasLineOfSight(origin: Vector3, target: Hit, attacker: Model): bo
 	return result == nil
 end
 
-function HitDetection.query(attacker: Model, action: Actions.Action, aim: any): { Hit }
+-- Returns the characters hit and, when structureOf is given, the
+-- registered structures hit. maxTargets caps each list separately.
+function HitDetection.query(
+	attacker: Model,
+	action: Actions.Action,
+	aim: any,
+	structureOf: StructureLookup?
+): ({ Hit }, { StructureHit })
 	local root = HitDetection.getRoot(attacker)
 	if not root then
-		return {}
+		return {}, {}
 	end
 	local hitbox = action.hitbox
 	local shape = hitbox.shape
 	local hits: { Hit }
+	local structures: { StructureHit }
 
-	if shape == "None" then
-		return {}
-	elseif shape == "Box" then
+	if shape == "Box" then
 		local range = hitbox.range :: number
 		local cf = root.CFrame * CFrame.new(0, 0, -range / 2)
 		local size = Vector3.new(hitbox.width :: number, hitbox.height :: number, range)
 		local parts = workspace:GetPartBoundsInBox(cf, size, overlapParams(attacker))
 		hits = collect(parts, root.Position)
+		structures = collectStructures(parts, root.Position, structureOf)
 	elseif shape == "Radius" then
 		local parts =
 			workspace:GetPartBoundsInRadius(root.Position, hitbox.radius :: number, overlapParams(attacker))
 		hits = collect(parts, root.Position)
+		structures = collectStructures(parts, root.Position, structureOf)
 	elseif shape == "Ray" then
 		local origin = eyeOrigin(attacker, root)
 		local dir = HitDetection.sanitiseAim(aim, root)
 		local result = workspace:Raycast(origin, dir * (hitbox.range :: number), rayParams({ attacker }))
 		if not result or not result.Instance:IsA("BasePart") then
-			return {}
+			return {}, {}
 		end
-		hits = collect({ result.Instance :: BasePart }, origin)
+		local part = result.Instance :: BasePart
+		local distance = (result.Position - origin).Magnitude
+		hits = collect({ part }, origin)
 		if hits[1] then
-			hits[1].distance = (result.Position - origin).Magnitude
+			hits[1].distance = distance
+			structures = {}
+		else
+			local model = structureOf and structureOf(part)
+			structures = if model then { { model = model, distance = distance } } else {}
 		end
 	elseif shape == "Cone" then
 		local origin = eyeOrigin(attacker, root)
 		local dir = HitDetection.sanitiseAim(aim, root)
 		local range = hitbox.range :: number
 		local halfAngle = math.rad((hitbox.angle :: number) / 2)
+		local function inCone(position: Vector3): boolean
+			local offset = position - origin
+			if offset.Magnitude > range then
+				return false
+			end
+			local angle = if offset.Magnitude < 1e-3
+				then 0
+				else math.acos(math.clamp(offset.Unit:Dot(dir), -1, 1))
+			return angle <= halfAngle
+		end
 		local parts = workspace:GetPartBoundsInRadius(origin, range, overlapParams(attacker))
 		hits = {}
 		for _, hit in collect(parts, origin) do
-			local offset = hit.root.Position - origin
-			if offset.Magnitude <= range then
-				local angle = if offset.Magnitude < 1e-3
-					then 0
-					else math.acos(math.clamp(offset.Unit:Dot(dir), -1, 1))
-				if angle <= halfAngle and hasLineOfSight(origin, hit, attacker) then
-					table.insert(hits, hit)
-				end
+			if inCone(hit.root.Position) and hasLineOfSight(origin, hit, attacker) then
+				table.insert(hits, hit)
 			end
 		end
+		local coneParts = {}
+		for _, part in parts do
+			if inCone(part.Position) then
+				table.insert(coneParts, part)
+			end
+		end
+		structures = collectStructures(coneParts, origin, structureOf)
 	else
-		return {}
+		return {}, {}
 	end
 
-	if action.maxTargets and #hits > action.maxTargets then
-		local trimmed = table.create(action.maxTargets)
-		for i = 1, action.maxTargets do
-			trimmed[i] = hits[i]
-		end
-		hits = trimmed
-	end
-	return hits
+	return trim(hits, action.maxTargets), trim(structures, action.maxTargets)
 end
 
 return HitDetection

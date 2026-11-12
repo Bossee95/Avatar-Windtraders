@@ -88,6 +88,7 @@ CombatService:IsInCombat(player) -> boolean
 CombatService:TagCombat(player)
 CombatService:Revalidate(player)
 CombatService:SetVariationOwnershipProvider(fn(player, variationId) -> boolean)
+CombatService:RegisterStructure(model, { faction?, onDamage }) -> unregister
 CombatService:SetTargetFilter(fn(attacker, targetModel) -> boolean)   -- friendly fire, safe zones
 CombatService:SetDamageHandler(fn(attacker, humanoid, amount, actionId))
 CombatService.CombatTagChanged   -- (player, isTagged), on transitions only
@@ -131,3 +132,21 @@ validation.
 * All damage, ranges and cooldowns are first-pass numbers for balancing.
 * Knockback on players is applied by their own client. Movement abilities
   (dashes) are not in yet.
+
+## Structures
+
+Facilities can take combat damage:
+
+```lua
+local unregister = CombatService:RegisterStructure(model, {
+	faction = "FactionA",                       -- hits from this faction are ignored
+	onDamage = function(attacker, amount, actionId) end,
+})
+```
+
+Every hitbox shape can hit a registered structure. Rays stop at the first
+thing they hit. Damage counts only while `PDEventService:IsActive()`, except
+under Studio grant-all. `amount` includes the action's optional
+`structureMultiplier` (default 1, and 0 means the action can't damage
+structures). The structure is unregistered automatically when its model is
+destroyed.
