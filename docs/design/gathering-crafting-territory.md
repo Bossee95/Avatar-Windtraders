@@ -2,7 +2,7 @@
 
 Covers GDD §10 (Resource Gathering and Economy), §11 (Crafting), §12 (Facilities) and §13 (Territory and Entitlements).
 
-Status: **draft for review**. No code yet. This system sits on top of the core, inventory and combat systems, so the interfaces it needs from them are listed in §8 and will be matched to their real APIs once those land.
+Status: **draft for review**. Gathering and crafting (steps 2 and 3 in §10) are implemented. This system sits on top of the core, staff/PD, inventory and combat systems; the interfaces it uses are listed in §8.
 
 ---
 
@@ -353,25 +353,26 @@ Core calls are from `/mnt/project-files/core/CORE_API.md`. Inventory and combat 
 
 ## 9. Module layout
 
-This follows the core Rojo layout.
+This follows the core Rojo layout. The inventory system already uses the `Economy` folders, so this system uses `Production` (gathering, crafting) and, later, `Territory` (facilities, territory, entitlements).
 
 ```
-src/shared/Economy/
-  Config/Resources.luau  ResourceNodes.luau  Recipes.luau  Stations.luau
-  Config/Facilities.luau  Territories.luau  EconomyConfig.luau (flags, caps, multipliers)
-  Validation.luau          pure checks shared by services and tests
-src/server/Services/Economy/
-  ResourceNodeService.luau
-  CraftingService.luau
-  FacilityService.luau
-  TerritoryService.luau
-  EntitlementService.luau
-  EconomyAudit.luau        helper (not a *Service, so the loader skips it)
-src/client/Controllers/Economy/
-  GatherController.luau  CraftingController.luau  FacilityController.luau  TerritoryMapController.luau
-tests/Economy/
-  *.spec.luau              validation, transactions, capture maths
+src/shared/Production/
+  ProductionConfig.luau   flags, ranges, role permission flags
+  ProductionRemotes.luau
+  Config/ResourceNodes.luau  Recipes.luau  Stations.luau
+src/server/Services/Production/
+  NodeEngine.luau          pure node rules (scarcity, regen, staff overrides)
+  CraftingEngine.luau      pure recipe rules and all-or-nothing apply
+  GatheringService.luau    CraftingService.luau    ProductionAdminService.luau
+  Channels.luau  ProductionDeps.luau  WorldStore.luau   helpers (not *Service)
+src/client/Controllers/Production/
+  GatherController.luau    proximity prompts for nodes and stations
+src/shared/Territory/ and src/server/Services/Territory/   (next step)
+tests/Specs/Production/*.spec.luau
+tools/run-production-specs.lua   runs the pure specs with plain Lua 5.4
 ```
+
+Resources are the inventory system's `Material.*` items for now (placeholder content in its `ItemDefinitions`). Node and recipe configs reference those ids.
 
 ---
 
@@ -386,7 +387,7 @@ Each step is its own PR:
 5. **TerritoryService** (control state, anchor capture, staff rulings, access rules, map UI).
 6. **EntitlementService** (records, challenges, staff tools, death vacating).
 
-Steps 2–6 start once the core and inventory APIs above exist. Step 4's damage depends on the combat thread.
+Steps 2 and 3 are implemented on this branch. Steps 4–6 come next. Step 4's damage needs a structure-damage hook from combat.
 
 ---
 
