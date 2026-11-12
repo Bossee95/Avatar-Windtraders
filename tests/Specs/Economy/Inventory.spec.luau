@@ -1,7 +1,7 @@
 local ServerScriptService = game:GetService("ServerScriptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Fixtures = require(ServerScriptService.Tests.Economy.EconomyFixtures)
+local Fixtures = require(ServerScriptService.Tests.Specs.Economy.EconomyFixtures)
 local ItemRegistry = require(ReplicatedStorage.Shared.Economy.ItemRegistry)
 local SkinStore = require(ServerScriptService.Server.Services.Economy.SkinStore)
 

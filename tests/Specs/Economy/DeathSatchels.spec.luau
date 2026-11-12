@@ -1,6 +1,6 @@
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local Fixtures = require(ServerScriptService.Tests.Economy.EconomyFixtures)
+local Fixtures = require(ServerScriptService.Tests.Specs.Economy.EconomyFixtures)
 
 -- Kills player 1 (who carries a sword, 20 common material and an untradeable heirloom).
 local function killed(w)

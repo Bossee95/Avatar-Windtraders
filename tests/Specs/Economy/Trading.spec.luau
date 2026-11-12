@@ -1,6 +1,6 @@
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local Fixtures = require(ServerScriptService.Tests.Economy.EconomyFixtures)
+local Fixtures = require(ServerScriptService.Tests.Specs.Economy.EconomyFixtures)
 
 -- Opens a trade between two new players: a holds a sword, b holds 10 rare material.
 local function openTrade(w)

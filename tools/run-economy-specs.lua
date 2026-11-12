@@ -1,11 +1,11 @@
 --[[
-	Runs the economy specs (tests/Economy/*.spec.luau) outside Roblox Studio, with a
+	Runs the economy specs (tests/Specs/Economy/*.spec.luau) outside Roblox Studio, with a
 	plain Lua 5.4 interpreter:
 
 		lua5.4 tools/run-economy-specs.lua
 
 	The economy engines are pure Lua, so this gives fast feedback without Studio. The
-	Studio runner (tests/Runner.server.luau) runs the same specs inside the game.
+	Studio runner (tests/TestRunner.server.luau) runs the same specs inside the game.
 
 	This shim provides just enough of Roblox for the specs: `game:GetService()` returns
 	path proxies for ServerScriptService.Server, ReplicatedStorage.Shared and
@@ -146,7 +146,7 @@ local function expect(actual)
 end
 
 local specs = {}
-local listing = io.popen('ls tests/Economy/*.spec.luau 2>/dev/null')
+local listing = io.popen('ls tests/Specs/Economy/*.spec.luau 2>/dev/null')
 for line in listing:lines() do
 	table.insert(specs, (line:gsub("%.luau$", "")))
 end

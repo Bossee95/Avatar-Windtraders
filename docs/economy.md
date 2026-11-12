@@ -23,7 +23,7 @@ The engines take every dependency as an argument, so they run outside Studio:
 lua5.4 tools/run-economy-specs.lua
 ```
 
-The same `tests/Economy/*.spec.luau` files run in Studio through the core test runner.
+The same `tests/Specs/Economy/*.spec.luau` files run in Studio through the core test runner.
 
 ## Data
 
