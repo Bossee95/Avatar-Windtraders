@@ -139,7 +139,8 @@ local function eyeOrigin(attacker: Model, root: BasePart): Vector3
 end
 
 local function hasLineOfSight(origin: Vector3, target: Hit, attacker: Model): boolean
-	local result = workspace:Raycast(origin, target.root.Position - origin, rayParams({ attacker, target.model }))
+	local result =
+		workspace:Raycast(origin, target.root.Position - origin, rayParams({ attacker, target.model }))
 	return result == nil
 end
 
@@ -161,7 +162,8 @@ function HitDetection.query(attacker: Model, action: Actions.Action, aim: any): 
 		local parts = workspace:GetPartBoundsInBox(cf, size, overlapParams(attacker))
 		hits = collect(parts, root.Position)
 	elseif shape == "Radius" then
-		local parts = workspace:GetPartBoundsInRadius(root.Position, hitbox.radius :: number, overlapParams(attacker))
+		local parts =
+			workspace:GetPartBoundsInRadius(root.Position, hitbox.radius :: number, overlapParams(attacker))
 		hits = collect(parts, root.Position)
 	elseif shape == "Ray" then
 		local origin = eyeOrigin(attacker, root)
@@ -184,7 +186,9 @@ function HitDetection.query(attacker: Model, action: Actions.Action, aim: any): 
 		for _, hit in collect(parts, origin) do
 			local offset = hit.root.Position - origin
 			if offset.Magnitude <= range then
-				local angle = if offset.Magnitude < 1e-3 then 0 else math.acos(math.clamp(offset.Unit:Dot(dir), -1, 1))
+				local angle = if offset.Magnitude < 1e-3
+					then 0
+					else math.acos(math.clamp(offset.Unit:Dot(dir), -1, 1))
 				if angle <= halfAngle and hasLineOfSight(origin, hit, attacker) then
 					table.insert(hits, hit)
 				end

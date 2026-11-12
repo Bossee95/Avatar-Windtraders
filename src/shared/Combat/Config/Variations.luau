@@ -31,7 +31,11 @@ local Variations: { [string]: Variation } = {
 	Bow_Standard = { displayName = "Standard Bow", weaponType = "Bow", critical = "Crit_Bow_Heartseeker" },
 	Bow_Recurve = { displayName = "Recurve Bow", weaponType = "Bow", critical = "Crit_Bow_Scatter" },
 
-	Rifle_Standard = { displayName = "Standard Rifle", weaponType = "Rifle", critical = "Crit_Rifle_Overcharge" },
+	Rifle_Standard = {
+		displayName = "Standard Rifle",
+		weaponType = "Rifle",
+		critical = "Crit_Rifle_Overcharge",
+	},
 	Rifle_Marksman = { displayName = "Marksman Rifle", weaponType = "Rifle", critical = "Crit_Rifle_Pierce" },
 }
 

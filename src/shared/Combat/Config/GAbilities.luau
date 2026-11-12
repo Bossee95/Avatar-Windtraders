@@ -30,7 +30,11 @@ local GAbilities: { [string]: GAbility } = {
 	BattleCry = { displayName = "Battle Cry", action = "G_BattleCry", requiresWeapon = false },
 	Grab = { displayName = "Grab", action = "G_Grab", requiresWeapon = false },
 	SmokeGrenade = { displayName = "Smoke Grenade", action = "G_SmokeGrenade", requiresWeapon = false },
-	DoubleBarrel = { displayName = "Double-Barrel Shotgun", action = "G_DoubleBarrel", requiresWeapon = false },
+	DoubleBarrel = {
+		displayName = "Double-Barrel Shotgun",
+		action = "G_DoubleBarrel",
+		requiresWeapon = false,
+	},
 }
 
 return table.freeze(GAbilities)

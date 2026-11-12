@@ -53,8 +53,10 @@ return function(t)
 	end)
 
 	t.test("equip rejects unknown variations and bad input", function()
-		t.expect(select(2, CombatRules.canEquip(record({ Sword = 1 }), "Sword_Nope", true, {}, nil))).toBe("InvalidVariation")
-		t.expect(select(2, CombatRules.canEquip(record({ Sword = 1 }), 42, true, {}, nil))).toBe("InvalidVariation")
+		t.expect(select(2, CombatRules.canEquip(record({ Sword = 1 }), "Sword_Nope", true, {}, nil)))
+			.toBe("InvalidVariation")
+		t.expect(select(2, CombatRules.canEquip(record({ Sword = 1 }), 42, true, {}, nil)))
+			.toBe("InvalidVariation")
 	end)
 
 	t.test("equip succeeds with kit, ownership and no blocking state", function()
@@ -64,16 +66,31 @@ return function(t)
 	end)
 
 	t.test("one weapon at a time: re-equipping the same weapon is a no-op", function()
-		local _, err = CombatRules.canEquip(record({ Sword = 1 }), "Sword_Standard", true, {}, "Sword_Standard")
+		local _, err =
+			CombatRules.canEquip(record({ Sword = 1 }), "Sword_Standard", true, {}, "Sword_Standard")
 		t.expect(err).toBe("AlreadyEquipped")
 	end)
 
 	t.test("switching is blocked in combat, mid-action, stunned and dead (§5.3, §19.5)", function()
 		local r = record({ Sword = 1, Spear = 1 })
-		t.expect(select(2, CombatRules.canEquip(r, "Spear_Standard", true, { combatTagged = true }, "Sword_Standard"))).toBe("InCombat")
-		t.expect(select(2, CombatRules.canEquip(r, "Spear_Standard", true, { busy = true }, "Sword_Standard"))).toBe("Busy")
-		t.expect(select(2, CombatRules.canEquip(r, "Spear_Standard", true, { stunned = true }, "Sword_Standard"))).toBe("Stunned")
-		t.expect(select(2, CombatRules.canEquip(r, "Spear_Standard", true, { dead = true }, "Sword_Standard"))).toBe("Dead")
+		t.expect(
+			select(
+				2,
+				CombatRules.canEquip(r, "Spear_Standard", true, { combatTagged = true }, "Sword_Standard")
+			)
+		).toBe("InCombat")
+		t.expect(
+			select(2, CombatRules.canEquip(r, "Spear_Standard", true, { busy = true }, "Sword_Standard"))
+		)
+			.toBe("Busy")
+		t.expect(
+			select(2, CombatRules.canEquip(r, "Spear_Standard", true, { stunned = true }, "Sword_Standard"))
+		)
+			.toBe("Stunned")
+		t.expect(
+			select(2, CombatRules.canEquip(r, "Spear_Standard", true, { dead = true }, "Sword_Standard"))
+		)
+			.toBe("Dead")
 		t.expect(select(2, CombatRules.canUnequip({ combatTagged = true }))).toBe("InCombat")
 		t.expect(CombatRules.canUnequip({})).toBe(true)
 	end)
@@ -107,7 +124,8 @@ return function(t)
 
 	t.test("one rank, many kits: the same character can hold several weapon types (§4.3)", function()
 		local r = record({ Sword = 3, Spear = 3, Bow = 3 })
-		t.expect(CombatRules.resolveAction(r, { variationId = "Sword_Standard" }, "C")).toBe("Sword_HeavySlash")
+		t.expect(CombatRules.resolveAction(r, { variationId = "Sword_Standard" }, "C"))
+			.toBe("Sword_HeavySlash")
 		t.expect(CombatRules.resolveAction(r, { variationId = "Bow_Recurve" }, "C")).toBe("Bow_Volley")
 	end)
 
@@ -123,7 +141,13 @@ return function(t)
 	end)
 
 	t.test("invalid inputs are rejected", function()
-		t.expect(select(2, CombatRules.resolveAction(record({ Sword = 1 }), { variationId = "Sword_Standard" }, "Q"))).toBe("InvalidInput")
+		t.expect(
+			select(
+				2,
+				CombatRules.resolveAction(record({ Sword = 1 }), { variationId = "Sword_Standard" }, "Q")
+			)
+		)
+			.toBe("InvalidInput")
 		t.expect(CombatRules.isInput(nil)).toBe(false)
 	end)
 
@@ -136,7 +160,10 @@ return function(t)
 		t.expect(select(2, CombatRules.resolveAction(r, {}, "G"))).toBe("NoGAbility")
 		t.expect(CombatRules.resolveAction(r, { gAbilityId = "SmokeGrenade" }, "G")).toBe("G_SmokeGrenade")
 		-- A selection that is no longer assigned is rejected.
-		t.expect(select(2, CombatRules.resolveAction(record({}, { "Grab" }), { gAbilityId = "SmokeGrenade" }, "G"))).toBe("AbilityNotAssigned")
+		t.expect(
+			select(2, CombatRules.resolveAction(record({}, { "Grab" }), { gAbilityId = "SmokeGrenade" }, "G"))
+		)
+			.toBe("AbilityNotAssigned")
 	end)
 
 	t.test("selecting a G ability is checked and blocked in combat", function()
@@ -144,7 +171,8 @@ return function(t)
 		t.expect(CombatRules.canSelectGAbility(r, "Grab", {})).toBe(true)
 		t.expect(select(2, CombatRules.canSelectGAbility(r, "BattleCry", {}))).toBe("AbilityNotAssigned")
 		t.expect(select(2, CombatRules.canSelectGAbility(r, "Nope", {}))).toBe("InvalidAbility")
-		t.expect(select(2, CombatRules.canSelectGAbility(r, "Grab", { combatTagged = true }))).toBe("InCombat")
+		t.expect(select(2, CombatRules.canSelectGAbility(r, "Grab", { combatTagged = true })))
+			.toBe("InCombat")
 	end)
 
 	t.test("M1 combo advances, wraps and resets after the reset window", function()

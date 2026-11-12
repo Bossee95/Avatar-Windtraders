@@ -72,9 +72,36 @@ end
 
 local Actions: { [string]: Action } = {
 	---------------------------------------------------------------- Sword M1
-	Sword_M1_1 = { displayName = "Slash", kind = "M1", cooldown = 0, windup = 0.15, recovery = 0.25, hitbox = box(6, 5, 5), damage = 8, animation = "Sword_M1_1" },
-	Sword_M1_2 = { displayName = "Slash", kind = "M1", cooldown = 0, windup = 0.15, recovery = 0.25, hitbox = box(6, 5, 5), damage = 8, animation = "Sword_M1_2" },
-	Sword_M1_3 = { displayName = "Slash", kind = "M1", cooldown = 0, windup = 0.15, recovery = 0.25, hitbox = box(6, 5, 5), damage = 8, animation = "Sword_M1_3" },
+	Sword_M1_1 = {
+		displayName = "Slash",
+		kind = "M1",
+		cooldown = 0,
+		windup = 0.15,
+		recovery = 0.25,
+		hitbox = box(6, 5, 5),
+		damage = 8,
+		animation = "Sword_M1_1",
+	},
+	Sword_M1_2 = {
+		displayName = "Slash",
+		kind = "M1",
+		cooldown = 0,
+		windup = 0.15,
+		recovery = 0.25,
+		hitbox = box(6, 5, 5),
+		damage = 8,
+		animation = "Sword_M1_2",
+	},
+	Sword_M1_3 = {
+		displayName = "Slash",
+		kind = "M1",
+		cooldown = 0,
+		windup = 0.15,
+		recovery = 0.25,
+		hitbox = box(6, 5, 5),
+		damage = 8,
+		animation = "Sword_M1_3",
+	},
 	Sword_M1_4 = {
 		displayName = "Finisher",
 		kind = "M1",
@@ -88,8 +115,26 @@ local Actions: { [string]: Action } = {
 	},
 
 	---------------------------------------------------------------- Spear M1
-	Spear_M1_1 = { displayName = "Jab", kind = "M1", cooldown = 0, windup = 0.18, recovery = 0.3, hitbox = box(9, 3, 4), damage = 9, animation = "Spear_M1_1" },
-	Spear_M1_2 = { displayName = "Jab", kind = "M1", cooldown = 0, windup = 0.18, recovery = 0.3, hitbox = box(9, 3, 4), damage = 9, animation = "Spear_M1_2" },
+	Spear_M1_1 = {
+		displayName = "Jab",
+		kind = "M1",
+		cooldown = 0,
+		windup = 0.18,
+		recovery = 0.3,
+		hitbox = box(9, 3, 4),
+		damage = 9,
+		animation = "Spear_M1_1",
+	},
+	Spear_M1_2 = {
+		displayName = "Jab",
+		kind = "M1",
+		cooldown = 0,
+		windup = 0.18,
+		recovery = 0.3,
+		hitbox = box(9, 3, 4),
+		damage = 9,
+		animation = "Spear_M1_2",
+	},
 	Spear_M1_3 = {
 		displayName = "Drive",
 		kind = "M1",
@@ -127,7 +172,16 @@ local Actions: { [string]: Action } = {
 	},
 
 	--------------------------------------------------------- Sword kit (Z/X/C)
-	Sword_Lunge = { displayName = "Lunge", kind = "Kit", cooldown = 8, windup = 0.25, recovery = 0.4, hitbox = box(11, 4, 5), damage = 14, animation = "Sword_Lunge" },
+	Sword_Lunge = {
+		displayName = "Lunge",
+		kind = "Kit",
+		cooldown = 8,
+		windup = 0.25,
+		recovery = 0.4,
+		hitbox = box(11, 4, 5),
+		damage = 14,
+		animation = "Sword_Lunge",
+	},
 	Sword_Sweep = {
 		displayName = "Sweep",
 		kind = "Kit",
@@ -152,7 +206,16 @@ local Actions: { [string]: Action } = {
 	},
 
 	--------------------------------------------------------- Spear kit (Z/X/C)
-	Spear_Thrust = { displayName = "Thrust", kind = "Kit", cooldown = 8, windup = 0.3, recovery = 0.4, hitbox = box(14, 3, 4), damage = 15, animation = "Spear_Thrust" },
+	Spear_Thrust = {
+		displayName = "Thrust",
+		kind = "Kit",
+		cooldown = 8,
+		windup = 0.3,
+		recovery = 0.4,
+		hitbox = box(14, 3, 4),
+		damage = 15,
+		animation = "Spear_Thrust",
+	},
 	Spear_Spin = {
 		displayName = "Spin",
 		kind = "Kit",

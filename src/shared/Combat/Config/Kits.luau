@@ -32,22 +32,34 @@ local Kits: { [string]: { [number]: Kit } } = {
 	Sword = {
 		[1] = { displayName = "Sword Kit I", abilities = { Z = "Sword_Lunge" } },
 		[2] = { displayName = "Sword Kit II", abilities = { Z = "Sword_Lunge", X = "Sword_Sweep" } },
-		[3] = { displayName = "Sword Kit III", abilities = { Z = "Sword_Lunge", X = "Sword_Sweep", C = "Sword_HeavySlash" } },
+		[3] = {
+			displayName = "Sword Kit III",
+			abilities = { Z = "Sword_Lunge", X = "Sword_Sweep", C = "Sword_HeavySlash" },
+		},
 	},
 	Spear = {
 		[1] = { displayName = "Spear Kit I", abilities = { Z = "Spear_Thrust" } },
 		[2] = { displayName = "Spear Kit II", abilities = { Z = "Spear_Thrust", X = "Spear_Spin" } },
-		[3] = { displayName = "Spear Kit III", abilities = { Z = "Spear_Thrust", X = "Spear_Spin", C = "Spear_VaultStrike" } },
+		[3] = {
+			displayName = "Spear Kit III",
+			abilities = { Z = "Spear_Thrust", X = "Spear_Spin", C = "Spear_VaultStrike" },
+		},
 	},
 	Bow = {
 		[1] = { displayName = "Bow Kit I", abilities = { Z = "Bow_PowerShot" } },
 		[2] = { displayName = "Bow Kit II", abilities = { Z = "Bow_PowerShot", X = "Bow_PinningShot" } },
-		[3] = { displayName = "Bow Kit III", abilities = { Z = "Bow_PowerShot", X = "Bow_PinningShot", C = "Bow_Volley" } },
+		[3] = {
+			displayName = "Bow Kit III",
+			abilities = { Z = "Bow_PowerShot", X = "Bow_PinningShot", C = "Bow_Volley" },
+		},
 	},
 	Rifle = {
 		[1] = { displayName = "Rifle Kit I", abilities = { Z = "Rifle_Burst" } },
 		[2] = { displayName = "Rifle Kit II", abilities = { Z = "Rifle_Burst", X = "Rifle_StockBash" } },
-		[3] = { displayName = "Rifle Kit III", abilities = { Z = "Rifle_Burst", X = "Rifle_StockBash", C = "Rifle_AimedShot" } },
+		[3] = {
+			displayName = "Rifle Kit III",
+			abilities = { Z = "Rifle_Burst", X = "Rifle_StockBash", C = "Rifle_AimedShot" },
+		},
 	},
 }
 

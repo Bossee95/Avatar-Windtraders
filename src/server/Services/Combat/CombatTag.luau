@@ -7,11 +7,14 @@
 local CombatTag = {}
 CombatTag.__index = CombatTag
 
-export type CombatTag = typeof(setmetatable({} :: {
-	_duration: number,
-	_clock: () -> number,
-	_until: { [any]: number },
-}, CombatTag))
+export type CombatTag = typeof(setmetatable(
+	{} :: {
+		_duration: number,
+		_clock: () -> number,
+		_until: { [any]: number },
+	},
+	CombatTag
+))
 
 function CombatTag.new(duration: number, clock: (() -> number)?): CombatTag
 	return setmetatable({

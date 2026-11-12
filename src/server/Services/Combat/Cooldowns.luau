@@ -7,10 +7,13 @@
 local Cooldowns = {}
 Cooldowns.__index = Cooldowns
 
-export type Cooldowns = typeof(setmetatable({} :: {
-	_clock: () -> number,
-	_ready: { [any]: { [string]: number } },
-}, Cooldowns))
+export type Cooldowns = typeof(setmetatable(
+	{} :: {
+		_clock: () -> number,
+		_ready: { [any]: { [string]: number } },
+	},
+	Cooldowns
+))
 
 function Cooldowns.new(clock: (() -> number)?): Cooldowns
 	return setmetatable({ _clock = clock or os.clock, _ready = {} }, Cooldowns)

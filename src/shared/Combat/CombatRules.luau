@@ -145,7 +145,10 @@ function CombatRules.canUnequip(state: State?): (boolean, string?)
 end
 
 function CombatRules.hasGAbility(record: Record?, abilityId: string): boolean
-	return record ~= nil and record.abilities ~= nil and record.abilities[abilityId] ~= nil and GAbilities[abilityId] ~= nil
+	return record ~= nil
+		and record.abilities ~= nil
+		and record.abilities[abilityId] ~= nil
+		and GAbilities[abilityId] ~= nil
 end
 
 function CombatRules.canSelectGAbility(record: Record?, abilityId: any, state: State?): (boolean, string?)
@@ -189,7 +192,12 @@ end
 
 -- Next M1 step (1-based) given the previous step and when the previous
 -- action finished.
-function CombatRules.nextComboIndex(weaponType: string, lastIndex: number?, lastEndTime: number?, now: number): number
+function CombatRules.nextComboIndex(
+	weaponType: string,
+	lastIndex: number?,
+	lastEndTime: number?,
+	now: number
+): number
 	local def = WeaponTypes[weaponType]
 	if not def or not lastIndex or not lastEndTime then
 		return 1

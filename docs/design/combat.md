@@ -51,6 +51,10 @@ from the active character record on every action:
   `CombatService:SetVariationOwnershipProvider`. Owning a weapon never grants
   its kit (§11.2).
 
+On `Init`, CombatService registers `ProgressionService:SetValidator` for
+"WeaponType" and "Ability", so staff can only grant weapon types and G
+abilities that exist in this config.
+
 A revoke takes effect on the next input, and `CharacterChanged` (Kits,
 Abilities, Status) triggers `Revalidate`, which unequips at once if the kit or
 item is gone, even mid-combat.
@@ -96,7 +100,7 @@ moderator review. Combat never confirms a permanent death.
 
 ### Remotes
 
-Registered in `src/shared/Net/Remotes.luau`:
+Declared in `src/shared/Combat/CombatRemotes.luau` (merged by `Shared.Net`):
 
 | Name | Kind | Direction | Payload |
 |---|---|---|---|
@@ -117,7 +121,7 @@ its top level, every variation and every G ability, so the moveset can be tried
 without staff tools. Keys 1 to 4 equip Sword/Spear/Bow/Rifle, 5 unequips, 6
 cycles the G ability. Set it to `false` to test real permissions.
 
-Specs in `tests/Combat` cover the rules, combat tag, cooldowns and config
+Specs in `tests/Specs/Combat` cover the rules, combat tag, cooldowns and config
 validation.
 
 ## Open decisions (placeholders until settled)

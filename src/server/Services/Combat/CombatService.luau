@@ -89,7 +89,10 @@ local DeathReviewService: any = nil
 
 -- Who last hit each player's humanoid, for death reports.
 local KILL_CREDIT_WINDOW = 10
-local lastHitBy: { [Humanoid]: { userId: number, actionId: string, at: number } } = setmetatable({}, { __mode = "k" }) :: any
+local lastHitBy: { [Humanoid]: { userId: number, actionId: string, at: number } } = setmetatable(
+	{},
+	{ __mode = "k" }
+) :: any
 
 local IS_STUDIO = RunService:IsStudio()
 
@@ -323,7 +326,13 @@ local function damageMultiplier(state: PlayerState): number
 	return 1
 end
 
-local function performHit(player: Player, state: PlayerState, actionId: string, action: Actions.Action, aim: any): { Model }
+local function performHit(
+	player: Player,
+	state: PlayerState,
+	actionId: string,
+	action: Actions.Action,
+	aim: any
+): { Model }
 	local character = player.Character
 	local attackerRoot = HitDetection.getRoot(character)
 	if not character or not attackerRoot then
@@ -337,7 +346,9 @@ local function performHit(player: Player, state: PlayerState, actionId: string, 
 				continue
 			end
 		end
-		local amount = (action.damage or 0) * damageMultiplier(state) * CombatRules.falloffMultiplier(action, hit.distance)
+		local amount = (action.damage or 0)
+			* damageMultiplier(state)
+			* CombatRules.falloffMultiplier(action, hit.distance)
 		if amount > 0 then
 			if damageHandler then
 				local ok, err = pcall(damageHandler, player, hit.humanoid, amount, actionId)
@@ -495,7 +506,9 @@ function CombatService:Equip(player: Player, variationId: any): (boolean, string
 		return false, "NoCharacter"
 	end
 	local state = getState(player)
-	local owns = type(variationId) == "string" and Variations[variationId] ~= nil and ownsVariation(player, variationId)
+	local owns = type(variationId) == "string"
+		and Variations[variationId] ~= nil
+		and ownsVariation(player, variationId)
 	local ok, err = CombatRules.canEquip(record, variationId, owns, rulesState(player), state.variationId)
 	if not ok then
 		return false, err
@@ -617,13 +630,29 @@ end
 function CombatService:Init()
 	local problems = ConfigValidator.validate()
 	if #problems > 0 then
-		warn("[CombatService] combat config is invalid, combat is disabled:\n  " .. table.concat(problems, "\n  "))
+		warn(
+			"[CombatService] combat config is invalid, combat is disabled:\n  "
+				.. table.concat(problems, "\n  ")
+		)
 		enabled = false
 	else
 		enabled = true
 	end
+	-- Let core reject unknown weapon types and G ability ids at grant time.
+	local okProg, progression = pcall(Loader.Get, "ProgressionService")
+	if okProg and progression then
+		progression:SetValidator("WeaponType", function(id: string)
+			return WeaponTypes[id] ~= nil and Kits[id] ~= nil
+		end)
+		progression:SetValidator("Ability", function(id: string)
+			return GAbilities[id] ~= nil
+		end)
+	end
+
 	if studioGrantAll() then
-		warn("[CombatService] Studio: every kit, variation and G ability is granted (CombatSettings.StudioGrantAll)")
+		warn(
+			"[CombatService] Studio: every kit, variation and G ability is granted (CombatSettings.StudioGrantAll)"
+		)
 	end
 
 	local function isString(v: any)
