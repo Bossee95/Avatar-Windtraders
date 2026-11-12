@@ -11,7 +11,7 @@ Status: **draft for review**. No code yet. This system sits on top of the core, 
 1. **Server-authoritative.** Every gather, craft, build, damage and capture is validated on the server. Clients send intents only.
 2. **Crafting never grants kits.** A crafted weapon is an item with a variation (look + Critical attack). It never writes to kit, rank, Trial or G ability records. Whether the holder can *use* the moveset is the combat system's kit check (GDD §11.2, §16.5).
 3. **Entitlements are staff-only records.** The game stores and enforces entitlements but never creates, transfers or revokes one by itself. Only Loreteam (and, where noted, staff with an explicit permission) can change them (GDD §13.2–13.3, §17).
-4. **Config owns content.** Every resource, recipe, station, facility type, territory and display name is data in `config/`. Code refers only to stable ids (`res_scrap_alloy`, `fac_forward_base`). No setting-specific names or assets are hard-coded; display names are original and live in config so they can be changed without code edits. Faction ids here (`faction_a`, `faction_b`) are placeholders for whatever ids the core thread defines.
+4. **Config owns content.** Every resource, recipe, station, facility type, territory and display name is data in `src/shared/Economy/Config/`. Code refers only to stable ids (`res_scrap_alloy`, `fac_forward_base`). No setting-specific names or assets are hard-coded; display names are original and live in config so they can be changed without code edits. Faction ids are the core `WorldConfig.Factions` keys (`FactionA`, `FactionB`, `RogueA`, `RogueB`). Territory and build-zone display names go in `WorldConfig.Places`, per the core rule that place names live only there.
 5. **PD-gated.** World-changing actions (gather, craft, build, damage, capture) only happen while a PD event is active, using the core PD state. Each gate is a config flag so staff can relax it for testing.
 6. **Everything is logged.** Gathers, crafts, facility state changes, captures and entitlement changes are written to an audit log that moderators and Loreteam can read.
 
@@ -21,7 +21,7 @@ Status: **draft for review**. No code yet. This system sits on top of the core, 
 
 ### 2.1 Resource definitions
 
-Resources are ordinary inventory items with `category = "Resource"` and a resource tier. Defined in `config/Resources.lua`:
+Resources are ordinary inventory items with `category = "Resource"` and a resource tier. Defined in `Economy/Config/Resources.luau`:
 
 ```lua
 res_scrap_alloy = {
@@ -37,7 +37,7 @@ Tiers map to GDD §10.2: Common, Industrial, Natural and Rare. Tier drives defau
 
 ### 2.2 Resource nodes
 
-A node is a placed world object tagged `ResourceNode` with attribute `nodeType`. Node types in `config/ResourceNodes.lua`:
+A node is a placed world object tagged `ResourceNode` with attribute `nodeType`. Node types in `Economy/Config/ResourceNodes.luau`:
 
 ```lua
 node_scrap_pile = {
@@ -83,7 +83,7 @@ No new mechanism is needed. Resources are lost through systems that already exis
 
 ### 3.1 Recipes
 
-`config/Recipes.lua`:
+`Economy/Config/Recipes.luau`:
 
 ```lua
 rcp_blade_serrated = {
@@ -92,7 +92,7 @@ rcp_blade_serrated = {
     outputs     = { { item = "wpn_sword", variation = "var_sword_serrated", qty = 1 } },
     station     = "stn_forge",          -- station type required
     craftTime   = 8,
-    factions    = { "faction_a" },            -- nil = any faction
+    factions    = { "FactionA" },            -- nil = any faction
     requires    = {                     -- all optional
         minRank      = nil,             -- read from core rank record; never modified
         permission   = "craft_weapons", -- faction-leadership or staff-granted flag
@@ -112,7 +112,7 @@ rcp_blade_serrated = {
 
 ### 3.2 Stations
 
-A station is either a standalone world object or a function of a facility (§4). `config/Stations.lua` defines station types (`stn_workbench`, `stn_forge`, `stn_field_lab`…). A facility-provided station only works while that facility is `Operational`, so damaging or capturing a facility removes its crafting from the owner (GDD §12.4).
+A station is either a standalone world object or a function of a facility (§4). `Economy/Config/Stations.luau` defines station types (`stn_workbench`, `stn_forge`, `stn_field_lab`…). A facility-provided station only works while that facility is `Operational`, so damaging or capturing a facility removes its crafting from the owner (GDD §12.4).
 
 ### 3.3 Crafting flow
 
@@ -138,12 +138,12 @@ A crafted weapon is an item instance:
 
 ### 4.1 Facility types
 
-`config/Facilities.lua` defines each type by function, not by lore name:
+`Economy/Config/Facilities.luau` defines each type by function, not by lore name:
 
 ```lua
 fac_forward_base = {
     displayName = "Forward Operating Base",
-    factions    = { "faction_a" },
+    factions    = { "FactionA" },
     cost        = { res_scrap_alloy = 120, res_circuitry = 20 },
     buildPoints = 300,              -- work required to finish
     maxHealth   = 5000,
@@ -218,11 +218,11 @@ This ties into GDD §19 item 1 (stored items and death). The inventory thread de
 
 ### 5.1 Model
 
-Territories are named regions in `config/Territories.lua`, each with a world volume:
+Territories are named regions in `Economy/Config/Territories.luau`, each with a world volume:
 
 ```lua
 ter_north_ridge = {
-    displayName = "North Ridge",
+    place       = "NorthRidge", -- display name from WorldConfig.Places
     adjacent    = { "ter_falls", "ter_basin" },
     landmark    = false,        -- narrative landmark flag
     buildZones  = { "bz_north_ridge_1" },
@@ -232,7 +232,7 @@ ter_north_ridge = {
 Runtime state per territory (persisted):
 
 ```lua
-{ controller = "faction_a" | "faction_b" | nil, status = "Held" | "Contested" | "Neutral",
+{ controller = "FactionA" | "FactionB" | nil, status = "Held" | "Contested" | "Neutral",
   since = timestamp, source = "capture" | "staff" }
 ```
 
@@ -320,15 +320,21 @@ A challenge is also a record, so the Loreteam can run challenges by any method i
 
 ## 8. Dependencies on other systems
 
-These are the calls this system needs. Names are placeholders until the owning threads publish their APIs.
+Core calls are from `/mnt/project-files/core/CORE_API.md`. Inventory and combat names are still placeholders until those threads publish their APIs.
 
 **Core framework**
 
-- `PD.IsActive()`, `PD.GetPhase()`, PD start and end signals. These drive node refill, cache cleanup and gates.
-- `Characters.Get(player)` returning character id, faction id, rank (read-only) and alive or dead state.
-- `Permissions.Has(character, flag)` for faction permissions such as `build` and `craft_weapons`.
-- `Staff.HasRole(player, "Loreteam" | "Moderator" | "Developer")`.
-- A PD-death confirmed signal, used to vacate entitlements.
+- `CharacterService:GetActiveCharacter(player)` for character id, `faction`, `role` and `rank` (read only).
+- `CharacterService:IsAlive(player)`, and `CharacterService:RegisterSwitchGuard` to block switching characters mid-channel.
+- `PermadeathService.Permadeath` signal, used to vacate character-held entitlements (§6.2). This system adds no transfer hook, because it holds no character items.
+- `DataService:RegisterSection("Economy", { scope = "Character", ... })` only for small per-character state (gather cooldowns). World state, entitlements and the audit log are their own stores (§7) on the core `SafeStore` wrapper.
+- `Shared.Net` and `Net/Remotes.luau` for the `Gather`, `Craft`, `Facility`, `Territory` and `Entitlement` remotes.
+
+**Staff tools and PD events**
+
+- `PDEventService:IsActive()` and `PDEventService:GetActiveEvent()` (phase, if exposed), plus PD start and end signals. These drive node refill, cache cleanup and every gate.
+- `StaffService:HasPermission(player, permission)`. Proposed permissions: `economy.nodes`, `economy.recipes`, `facility.admin`, `territory.rule`, `entitlement.write`. `entitlement.write` and `territory.rule` should be Loreteam-only.
+- Faction-level permissions for players (`build`, `craft_weapons`). If no faction permission system exists, these become role checks against `WorldConfig.Factions[faction].roles` in config.
 
 **Inventory**
 
@@ -345,27 +351,27 @@ These are the calls this system needs. Names are placeholders until the owning t
 
 ---
 
-## 9. Module layout (proposed)
+## 9. Module layout
+
+This follows the core Rojo layout.
 
 ```
-src/
-  ReplicatedStorage/Shared/Config/
-    Resources.lua  ResourceNodes.lua  Recipes.lua  Stations.lua
-    Facilities.lua  Territories.lua  Economy.lua (flags, caps, multipliers)
-  ServerScriptService/Economy/
-    ResourceNodeService.lua
-    CraftingService.lua
-    FacilityService.lua
-    TerritoryService.lua
-    EntitlementService.lua
-    EconomyAudit.lua
-  StarterPlayerScripts/Economy/
-    GatherController.lua  CraftingUI.lua  FacilityUI.lua  TerritoryMap.lua
-tests/
-  economy/   (pure-logic unit tests: validation, transactions, capture maths)
+src/shared/Economy/
+  Config/Resources.luau  ResourceNodes.luau  Recipes.luau  Stations.luau
+  Config/Facilities.luau  Territories.luau  EconomyConfig.luau (flags, caps, multipliers)
+  Validation.luau          pure checks shared by services and tests
+src/server/Services/Economy/
+  ResourceNodeService.luau
+  CraftingService.luau
+  FacilityService.luau
+  TerritoryService.luau
+  EntitlementService.luau
+  EconomyAudit.luau        helper (not a *Service, so the loader skips it)
+src/client/Controllers/Economy/
+  GatherController.luau  CraftingController.luau  FacilityController.luau  TerritoryMapController.luau
+tests/Economy/
+  *.spec.luau              validation, transactions, capture maths
 ```
-
-This will follow whatever folder and tooling convention the core thread sets up (Rojo or otherwise). Validation logic is kept in pure functions so it can be unit-tested without a running place.
 
 ---
 
