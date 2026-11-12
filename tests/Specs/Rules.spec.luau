@@ -31,7 +31,8 @@ local function newAccountWithCharacter()
 end
 
 local function request(character, extra)
-	local r = { userId = 42, characterId = character.id, pdEventId = "pd-1", confirmedBy = STAFF, reason = "test" }
+	local r =
+		{ userId = 42, characterId = character.id, pdEventId = "pd-1", confirmedBy = STAFF, reason = "test" }
 	for k, v in extra or {} do
 		r[k] = v
 	end

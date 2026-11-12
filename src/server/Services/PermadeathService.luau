@@ -47,7 +47,11 @@ end
 	ctx = { player: Player?, userId, characterId, pdEventId, location: CFrame?,
 	        character (frozen copy), sections (live character sections) }
 ]]
-function PermadeathService:RegisterTransferHook(name: string, fn: (any) -> (), options: { rollback: ((any) -> ())? }?)
+function PermadeathService:RegisterTransferHook(
+	name: string,
+	fn: (any) -> (),
+	options: { rollback: ((any) -> ())? }?
+)
 	assert(type(name) == "string" and type(fn) == "function", "RegisterTransferHook(name, fn, options?)")
 	for _, hook in hooks do
 		assert(hook.name ~= name, "Transfer hook already registered: " .. name)

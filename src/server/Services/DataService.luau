@@ -64,7 +64,11 @@ local function resolveStore()
 			dataStore:GetAsync("__probe")
 		end)
 		if not ok then
-			warn("[DataService] DataStores unavailable in Studio (" .. tostring(err) .. "). Using an in-memory store; nothing will persist.")
+			warn(
+				"[DataService] DataStores unavailable in Studio ("
+					.. tostring(err)
+					.. "). Using an in-memory store; nothing will persist."
+			)
 			usingMock = true
 			return makeStore(MockDataStore.new())
 		end
@@ -408,7 +412,10 @@ function DataService:Start()
 		-- Sessions are removed once their final save finishes (including ones
 		-- PlayerRemoving already started).
 		local deadline = os.clock() + 25
-		while (next(sessions) ~= nil or next(loading) ~= nil or next(offline) ~= nil) and os.clock() < deadline do
+		while
+			(next(sessions) ~= nil or next(loading) ~= nil or next(offline) ~= nil)
+			and os.clock() < deadline
+		do
 			task.wait(0.1)
 		end
 	end)

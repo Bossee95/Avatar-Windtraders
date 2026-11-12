@@ -44,7 +44,13 @@ local function isWholeNumber(value: any, min: number): boolean
 	return type(value) == "number" and value == value and value % 1 == 0 and value >= min and value <= 1000
 end
 
-function Progression.appendLog(character: any, actor: number, action: string, details: { [string]: any }?, now: number)
+function Progression.appendLog(
+	character: any,
+	actor: number,
+	action: string,
+	details: { [string]: any }?,
+	now: number
+)
 	table.insert(character.log, { at = now, actor = actor, action = action, details = details })
 	local limit = GameConfig.Characters.ProgressionLogLimit
 	while #character.log > limit do
@@ -62,7 +68,13 @@ local function requireAlive(character: any): (boolean, string?)
 	return true, nil
 end
 
-function Progression.setFaction(character: any, faction: any, role: any, actor: number, now: number): (boolean, string?)
+function Progression.setFaction(
+	character: any,
+	faction: any,
+	role: any,
+	actor: number,
+	now: number
+): (boolean, string?)
 	local ok, err = requireAlive(character)
 	if not ok then
 		return false, err
@@ -79,7 +91,13 @@ function Progression.setFaction(character: any, faction: any, role: any, actor: 
 	local previous = { faction = character.faction, role = character.role }
 	character.faction = faction
 	character.role = role
-	Progression.appendLog(character, actor, "SetFaction", { from = previous, faction = faction, role = role }, now)
+	Progression.appendLog(
+		character,
+		actor,
+		"SetFaction",
+		{ from = previous, faction = faction, role = role },
+		now
+	)
 	return true, nil
 end
 
@@ -116,7 +134,12 @@ local function hasTrial(character: any, trialId: string): number?
 	return nil
 end
 
-function Progression.approveTrial(character: any, trialId: any, actor: number, now: number): (boolean, string?)
+function Progression.approveTrial(
+	character: any,
+	trialId: any,
+	actor: number,
+	now: number
+): (boolean, string?)
 	local ok, err = requireAlive(character)
 	if not ok then
 		return false, err
@@ -144,7 +167,12 @@ end
 
 -- Revokes a Trial and every Trial completed after it, so the record stays
 -- sequential. Returns (ok, errOrNil, revokedIds).
-function Progression.revokeTrial(character: any, trialId: any, actor: number, now: number): (boolean, string?, { string }?)
+function Progression.revokeTrial(
+	character: any,
+	trialId: any,
+	actor: number,
+	now: number
+): (boolean, string?, { string }?)
 	local ok, err = requireAlive(character)
 	if not ok then
 		return false, err, nil
@@ -162,7 +190,13 @@ function Progression.revokeTrial(character: any, trialId: any, actor: number, no
 	return true, nil, revoked
 end
 
-function Progression.grantKit(character: any, weaponType: any, level: any, actor: number, now: number): (boolean, string?)
+function Progression.grantKit(
+	character: any,
+	weaponType: any,
+	level: any,
+	actor: number,
+	now: number
+): (boolean, string?)
 	local ok, err = requireAlive(character)
 	if not ok then
 		return false, err
@@ -187,7 +221,12 @@ function Progression.grantKit(character: any, weaponType: any, level: any, actor
 	return true, nil
 end
 
-function Progression.revokeKit(character: any, weaponType: any, actor: number, now: number): (boolean, string?)
+function Progression.revokeKit(
+	character: any,
+	weaponType: any,
+	actor: number,
+	now: number
+): (boolean, string?)
 	local ok, err = requireAlive(character)
 	if not ok then
 		return false, err
@@ -197,11 +236,23 @@ function Progression.revokeKit(character: any, weaponType: any, actor: number, n
 	end
 	local previous = character.kits[weaponType]
 	character.kits[weaponType] = nil
-	Progression.appendLog(character, actor, "RevokeKit", { weaponType = weaponType, level = previous.level }, now)
+	Progression.appendLog(
+		character,
+		actor,
+		"RevokeKit",
+		{ weaponType = weaponType, level = previous.level },
+		now
+	)
 	return true, nil
 end
 
-function Progression.grantAbility(character: any, abilityId: any, source: any, actor: number, now: number): (boolean, string?)
+function Progression.grantAbility(
+	character: any,
+	abilityId: any,
+	source: any,
+	actor: number,
+	now: number
+): (boolean, string?)
 	local ok, err = requireAlive(character)
 	if not ok then
 		return false, err
@@ -220,7 +271,12 @@ function Progression.grantAbility(character: any, abilityId: any, source: any, a
 	return true, nil
 end
 
-function Progression.revokeAbility(character: any, abilityId: any, actor: number, now: number): (boolean, string?)
+function Progression.revokeAbility(
+	character: any,
+	abilityId: any,
+	actor: number,
+	now: number
+): (boolean, string?)
 	local ok, err = requireAlive(character)
 	if not ok then
 		return false, err

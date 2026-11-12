@@ -119,7 +119,10 @@ end
 ------------------------------------------------------------------------
 
 -- fn(player, fromId?, toId?) -> (allowed, reason?). Any false blocks the switch.
-function CharacterService:RegisterSwitchGuard(name: string, fn: (Player, string?, string?) -> (boolean, string?))
+function CharacterService:RegisterSwitchGuard(
+	name: string,
+	fn: (Player, string?, string?) -> (boolean, string?)
+)
 	table.insert(switchGuards, { name = name, fn = fn })
 end
 

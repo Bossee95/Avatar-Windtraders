@@ -53,7 +53,9 @@ end
 
 local function refreshFactionButtons()
 	for key, b in factionButtons do
-		b.BackgroundColor3 = if key == chosenFaction then Color3.fromRGB(70, 110, 90) else Color3.fromRGB(45, 52, 60)
+		b.BackgroundColor3 = if key == chosenFaction
+			then Color3.fromRGB(70, 110, 90)
+			else Color3.fromRGB(45, 52, 60)
 	end
 end
 
@@ -94,7 +96,11 @@ end
 function CharacterScreenController:Start()
 	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 
-	gui = make("ScreenGui", { Name = "CharacterScreen", ResetOnSpawn = false, IgnoreGuiInset = true, Enabled = false }, playerGui)
+	gui = make(
+		"ScreenGui",
+		{ Name = "CharacterScreen", ResetOnSpawn = false, IgnoreGuiInset = true, Enabled = false },
+		playerGui
+	)
 	make("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(15, 18, 22) }, gui)
 
 	local panel = make("Frame", {
@@ -137,8 +143,13 @@ function CharacterScreenController:Start()
 		LayoutOrder = 3,
 	}, panel)
 
-	local factionRow = make("Frame", { Size = UDim2.new(1, 0, 0, 36), BackgroundTransparency = 1, LayoutOrder = 4 }, panel)
-	make("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8) }, factionRow)
+	local factionRow =
+		make("Frame", { Size = UDim2.new(1, 0, 0, 36), BackgroundTransparency = 1, LayoutOrder = 4 }, panel)
+	make(
+		"UIListLayout",
+		{ FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8) },
+		factionRow
+	)
 	local selectable = GameConfig.Characters.PlayerSelectableFactions
 	for _, key in selectable do
 		local b = button(WorldConfig.getFactionName(key), factionRow)
@@ -155,7 +166,8 @@ function CharacterScreenController:Start()
 	create.LayoutOrder = 5
 	create.Activated:Connect(function()
 		setStatus("Creating...")
-		local ok, result = CharacterController:CreateCharacter({ name = nameBox.Text, faction = chosenFaction })
+		local ok, result =
+			CharacterController:CreateCharacter({ name = nameBox.Text, faction = chosenFaction })
 		setStatus(if ok then "" else "Couldn't create: " .. tostring(result))
 	end)
 

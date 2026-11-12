@@ -69,7 +69,15 @@ function SafeStore:_request(label: string, fn: () -> any): (boolean, any)
 			return true, result
 		end
 		lastError = result
-		warn(string.format("[SafeStore] %s failed (attempt %d/%d): %s", label, attempt, options.requestRetries, tostring(result)))
+		warn(
+			string.format(
+				"[SafeStore] %s failed (attempt %d/%d): %s",
+				label,
+				attempt,
+				options.requestRetries,
+				tostring(result)
+			)
+		)
 		if attempt < options.requestRetries then
 			self._wait(delay)
 			delay *= 2
@@ -200,7 +208,9 @@ function SafeStore:Save(session: Session, release: boolean): (boolean, string?)
 			old.data = snapshot
 			old.meta.savedAt = self._now()
 			old.meta.saveCount = (old.meta.saveCount or 0) + 1
-			old.meta.lock = if release then nil else { sessionId = session.id, jobId = game.JobId, at = self._now() }
+			old.meta.lock = if release
+				then nil
+				else { sessionId = session.id, jobId = game.JobId, at = self._now() }
 			return old
 		end)
 	end)
@@ -211,7 +221,12 @@ function SafeStore:Save(session: Session, release: boolean): (boolean, string?)
 	end
 	if lost then
 		session.lost = true
-		warn(string.format("[SafeStore] Session for %s was taken over by another server; not saving.", session.key))
+		warn(
+			string.format(
+				"[SafeStore] Session for %s was taken over by another server; not saving.",
+				session.key
+			)
+		)
 		return false, "SessionLost"
 	end
 	if release then

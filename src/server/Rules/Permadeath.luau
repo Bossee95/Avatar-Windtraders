@@ -107,13 +107,26 @@ function Permadeath.process(account: any, request: Request, hooks: { Hook }, now
 	for _, hook in hooks do
 		local ok, err = runNoYield(hook.fn, ctx)
 		if not ok then
-			warn(string.format("[Permadeath] Transfer hook '%s' failed for %s: %s", hook.name, request.characterId, tostring(err)))
+			warn(
+				string.format(
+					"[Permadeath] Transfer hook '%s' failed for %s: %s",
+					hook.name,
+					request.characterId,
+					tostring(err)
+				)
+			)
 			for i = #completed, 1, -1 do
 				local done = completed[i]
 				if done.rollback then
 					local rollbackOk, rollbackErr = runNoYield(done.rollback, ctx)
 					if not rollbackOk then
-						warn(string.format("[Permadeath] Rollback of '%s' failed: %s", done.name, tostring(rollbackErr)))
+						warn(
+							string.format(
+								"[Permadeath] Rollback of '%s' failed: %s",
+								done.name,
+								tostring(rollbackErr)
+							)
+						)
 					end
 				end
 			end

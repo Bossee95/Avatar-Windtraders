@@ -30,7 +30,10 @@ local sections: { [string]: SectionDefinition } = {}
 
 function Schema.registerSection(name: string, definition: SectionDefinition)
 	assert(type(name) == "string" and #name > 0, "Section name must be a non-empty string")
-	assert(definition.scope == "Account" or definition.scope == "Character", "Section scope must be Account or Character")
+	assert(
+		definition.scope == "Account" or definition.scope == "Character",
+		"Section scope must be Account or Character"
+	)
 	assert(type(definition.default) == "table", "Section default must be a table")
 	assert(sections[name] == nil, "Section already registered: " .. name)
 	sections[name] = { scope = definition.scope, default = Table.deepCopy(definition.default) }

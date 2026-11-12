@@ -39,7 +39,9 @@ function CharacterController:GetActiveCharacter(): any?
 end
 
 -- request = { name: string, faction: string, role: string? } -> (ok, idOrError)
-function CharacterController:CreateCharacter(request: { name: string, faction: string, role: string? }): (boolean, string?)
+function CharacterController:CreateCharacter(
+	request: { name: string, faction: string, role: string? }
+): (boolean, string?)
 	local ok, result = Net.Invoke("CreateCharacter", request)
 	if ok == nil then
 		return false, "RequestDropped"

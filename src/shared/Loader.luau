@@ -38,7 +38,13 @@ function Loader.Start(root: Instance, suffix: string)
 		assert(modules[moduleScript.Name] == nil, "Duplicate module name: " .. moduleScript.Name)
 		local ok, result = pcall(require, moduleScript)
 		if not ok then
-			error(string.format("[Loader] Failed to require %s: %s", moduleScript:GetFullName(), tostring(result)))
+			error(
+				string.format(
+					"[Loader] Failed to require %s: %s",
+					moduleScript:GetFullName(),
+					tostring(result)
+				)
+			)
 		end
 		modules[moduleScript.Name] = result
 		table.insert(ordered, { name = moduleScript.Name, module = result })

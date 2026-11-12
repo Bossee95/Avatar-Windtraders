@@ -54,10 +54,24 @@ local function apply(
 	return true, nil, extra
 end
 
-function ProgressionService:SetFaction(actor: number, userId: number, characterId: string, faction: string, role: string?)
-	return apply(actor, userId, characterId, "Faction", "SetFaction", { faction = faction, role = role }, function(character)
-		return Progression.setFaction(character, faction, role, actor, os.time())
-	end)
+function ProgressionService:SetFaction(
+	actor: number,
+	userId: number,
+	characterId: string,
+	faction: string,
+	role: string?
+)
+	return apply(
+		actor,
+		userId,
+		characterId,
+		"Faction",
+		"SetFaction",
+		{ faction = faction, role = role },
+		function(character)
+			return Progression.setFaction(character, faction, role, actor, os.time())
+		end
+	)
 end
 
 function ProgressionService:SetRank(actor: number, userId: number, characterId: string, rank: number)
@@ -67,9 +81,17 @@ function ProgressionService:SetRank(actor: number, userId: number, characterId: 
 end
 
 function ProgressionService:ApproveTrial(actor: number, userId: number, characterId: string, trialId: string)
-	return apply(actor, userId, characterId, "Trials", "ApproveTrial", { trial = trialId }, function(character)
-		return Progression.approveTrial(character, trialId, actor, os.time())
-	end)
+	return apply(
+		actor,
+		userId,
+		characterId,
+		"Trials",
+		"ApproveTrial",
+		{ trial = trialId },
+		function(character)
+			return Progression.approveTrial(character, trialId, actor, os.time())
+		end
+	)
 end
 
 -- Also revokes every Trial completed after `trialId`. Third return value is
@@ -80,28 +102,77 @@ function ProgressionService:RevokeTrial(actor: number, userId: number, character
 	end)
 end
 
-function ProgressionService:GrantKit(actor: number, userId: number, characterId: string, weaponType: string, level: number)
-	return apply(actor, userId, characterId, "Kits", "GrantKit", { weaponType = weaponType, level = level }, function(character)
-		return Progression.grantKit(character, weaponType, level, actor, os.time())
-	end)
+function ProgressionService:GrantKit(
+	actor: number,
+	userId: number,
+	characterId: string,
+	weaponType: string,
+	level: number
+)
+	return apply(
+		actor,
+		userId,
+		characterId,
+		"Kits",
+		"GrantKit",
+		{ weaponType = weaponType, level = level },
+		function(character)
+			return Progression.grantKit(character, weaponType, level, actor, os.time())
+		end
+	)
 end
 
 function ProgressionService:RevokeKit(actor: number, userId: number, characterId: string, weaponType: string)
-	return apply(actor, userId, characterId, "Kits", "RevokeKit", { weaponType = weaponType }, function(character)
-		return Progression.revokeKit(character, weaponType, actor, os.time())
-	end)
+	return apply(
+		actor,
+		userId,
+		characterId,
+		"Kits",
+		"RevokeKit",
+		{ weaponType = weaponType },
+		function(character)
+			return Progression.revokeKit(character, weaponType, actor, os.time())
+		end
+	)
 end
 
-function ProgressionService:GrantAbility(actor: number, userId: number, characterId: string, abilityId: string, source: string)
-	return apply(actor, userId, characterId, "Abilities", "GrantAbility", { ability = abilityId, source = source }, function(character)
-		return Progression.grantAbility(character, abilityId, source, actor, os.time())
-	end)
+function ProgressionService:GrantAbility(
+	actor: number,
+	userId: number,
+	characterId: string,
+	abilityId: string,
+	source: string
+)
+	return apply(
+		actor,
+		userId,
+		characterId,
+		"Abilities",
+		"GrantAbility",
+		{ ability = abilityId, source = source },
+		function(character)
+			return Progression.grantAbility(character, abilityId, source, actor, os.time())
+		end
+	)
 end
 
-function ProgressionService:RevokeAbility(actor: number, userId: number, characterId: string, abilityId: string)
-	return apply(actor, userId, characterId, "Abilities", "RevokeAbility", { ability = abilityId }, function(character)
-		return Progression.revokeAbility(character, abilityId, actor, os.time())
-	end)
+function ProgressionService:RevokeAbility(
+	actor: number,
+	userId: number,
+	characterId: string,
+	abilityId: string
+)
+	return apply(
+		actor,
+		userId,
+		characterId,
+		"Abilities",
+		"RevokeAbility",
+		{ ability = abilityId },
+		function(character)
+			return Progression.revokeAbility(character, abilityId, actor, os.time())
+		end
+	)
 end
 
 --[[

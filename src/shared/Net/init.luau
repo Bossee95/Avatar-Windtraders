@@ -37,7 +37,10 @@ local function buildRegistry()
 			for name, enabled in (source and source[kind]) or {} do
 				if enabled then
 					local other = if kind == "Events" then "Functions" else "Events"
-					assert(not registry[other][name], string.format("Net: '%s' (from %s) is both an Event and a Function", name, from))
+					assert(
+						not registry[other][name],
+						string.format("Net: '%s' (from %s) is both an Event and a Function", name, from)
+					)
 					registry[kind][name] = true
 				end
 			end
@@ -46,7 +49,11 @@ local function buildRegistry()
 	merge(require(script.Remotes), "Net/Remotes")
 	local shared = script.Parent
 	for _, module in shared:GetDescendants() do
-		if module:IsA("ModuleScript") and module ~= script.Remotes and string.sub(module.Name, -7) == "Remotes" then
+		if
+			module:IsA("ModuleScript")
+			and module ~= script.Remotes
+			and string.sub(module.Name, -7) == "Remotes"
+		then
 			merge(require(module), module:GetFullName())
 		end
 	end
@@ -88,7 +95,10 @@ local function getFolder(): Folder
 end
 
 local function getRemote(name: string, kind: "Events" | "Functions"): Instance
-	assert(Registry[kind][name], string.format("Net: '%s' is not registered under %s in any *Remotes module", name, kind))
+	assert(
+		Registry[kind][name],
+		string.format("Net: '%s' is not registered under %s in any *Remotes module", name, kind)
+	)
 	local className = if kind == "Events" then "RemoteEvent" else "RemoteFunction"
 	local parent = getFolder()
 	local remote = parent:FindFirstChild(name)
@@ -199,7 +209,10 @@ function Net.Fire(name: string, ...: any)
 	local remote = getRemote(name, "Events") :: RemoteEvent
 	if IS_SERVER then
 		local player = ...
-		assert(typeof(player) == "Instance" and player:IsA("Player"), "Net.Fire on the server needs a Player first")
+		assert(
+			typeof(player) == "Instance" and player:IsA("Player"),
+			"Net.Fire on the server needs a Player first"
+		)
 		remote:FireClient(...)
 	else
 		remote:FireServer(...)
