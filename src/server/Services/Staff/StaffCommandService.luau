@@ -81,8 +81,34 @@ end
 
 local commands: { [string]: Command } = {}
 
+local started = false
+
 local function register(command: Command)
+	assert(not started, "Staff commands must be registered from a service's :Init()")
+	assert(string.sub(command.alias, 1, 1) == "/", "Command aliases start with /")
+	assert(commands[command.alias] == nil, "Duplicate staff command " .. command.alias)
 	commands[command.alias] = command
+end
+
+--[[
+	Lets other systems add staff commands. Call from your service's :Init().
+
+	StaffCommandService:RegisterCommand("/node", {
+		usage = { "/node <nodeId> restock <amount>" },
+		permissions = { Permissions.Permission.ManageResources }, -- for /staff listing only
+		run = function(player, args, opts) -> string,  -- check permissions yourself
+	})
+
+	`args` are the words after the alias (quotes group words); `opts` holds
+	char=, hours= and days= options. Return the reply text.
+]]
+function StaffCommandService:RegisterCommand(alias: string, spec: { usage: { string }, permissions: { string }, run: Handler })
+	register({
+		alias = string.lower(alias),
+		usage = spec.usage,
+		permissions = spec.permissions,
+		run = spec.run,
+	})
 end
 
 register({
@@ -537,6 +563,7 @@ function StaffCommandService:Init()
 end
 
 function StaffCommandService:Start()
+	started = true
 	local folder = Instance.new("Folder")
 	folder.Name = "StaffCommands"
 	for alias in commands do

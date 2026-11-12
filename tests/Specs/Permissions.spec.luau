@@ -30,6 +30,17 @@ return function(t)
 		end
 	end)
 
+	t.test("territory, facilities, entitlements and recipes are Loreteam-only; resources are Loreteam + Development", function()
+		for _, perm in { P.ManageTerritory, P.ManageFacilities, P.ManageEntitlements, P.ManageRecipes } do
+			t.expect(Permissions.RoleHas(R.Loreteam, perm)).toBe(true)
+			t.expect(Permissions.RoleHas(R.Moderation, perm)).toBe(false)
+			t.expect(Permissions.RoleHas(R.Development, perm)).toBe(false)
+		end
+		t.expect(Permissions.RoleHas(R.Loreteam, P.ManageResources)).toBe(true)
+		t.expect(Permissions.RoleHas(R.Development, P.ManageResources)).toBe(true)
+		t.expect(Permissions.RoleHas(R.Moderation, P.ManageResources)).toBe(false)
+	end)
+
 	t.test("Loreteam and Moderation can both pause", function()
 		t.expect(Permissions.RoleHas(R.Loreteam, P.PausePDEvent)).toBe(true)
 		t.expect(Permissions.RoleHas(R.Moderation, P.PausePDEvent)).toBe(true)

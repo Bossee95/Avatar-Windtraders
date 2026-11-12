@@ -15,6 +15,8 @@ Defined in `Shared.Staff.Permissions`. The server re-checks every action.
 | ManageTrials | ✓ | | |
 | AssignKits | ✓ | | |
 | AssignLoreGAbilities (Lore, Event, Contribution) | ✓ | | |
+| ManageRecipes, ManageTerritory, ManageFacilities, ManageEntitlements | ✓ | | |
+| ManageResources (node stock, availability) | ✓ | | ✓ |
 | ConfirmDeath | | ✓ | |
 | ViewTradeLogs | | ✓ | |
 | ManageAccess (whitelist) | | ✓ | |
@@ -89,6 +91,8 @@ specific character (otherwise the player's current or last-played one).
 /audit [player] [days=1]
 /whitelist add|remove|check <player> [note]
 ```
+
+Other systems add commands with `StaffCommandService:RegisterCommand(alias, { usage, permissions, run })` from their `:Init()`.
 
 The `StaffCommand` remote runs the same command lines, for a future staff panel.
 

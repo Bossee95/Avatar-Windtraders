@@ -20,6 +20,13 @@ Permissions.Permission = table.freeze({
 	ManageTrials = "ManageTrials", -- record or revoke Trial completion
 	AssignKits = "AssignKits", -- assign or revoke weapon kits
 	AssignLoreGAbilities = "AssignLoreGAbilities", -- G abilities from lore, events, contributions
+	ManageRecipes = "ManageRecipes", -- crafting recipe locks (§11.3)
+	ManageTerritory = "ManageTerritory", -- territorial control outcomes (§13.1)
+	ManageFacilities = "ManageFacilities", -- facility ownership, damage, capture (§12.4)
+	ManageEntitlements = "ManageEntitlements", -- entitlements and challenge outcomes (§13.2, §13.3)
+
+	-- Loreteam and Development
+	ManageResources = "ManageResources", -- resource node stock and availability (§10.3)
 
 	-- Loreteam and Moderation
 	PausePDEvent = "PausePDEvent", -- pause and resume (supervision, emergencies)
@@ -52,6 +59,11 @@ Permissions.RolePermissions = table.freeze({
 		[P.ManageTrials] = true,
 		[P.AssignKits] = true,
 		[P.AssignLoreGAbilities] = true,
+		[P.ManageRecipes] = true,
+		[P.ManageTerritory] = true,
+		[P.ManageFacilities] = true,
+		[P.ManageEntitlements] = true,
+		[P.ManageResources] = true,
 		[P.ViewAuditLog] = true,
 		[P.ViewRecords] = true,
 	}),
@@ -66,6 +78,7 @@ Permissions.RolePermissions = table.freeze({
 	[R.Development] = table.freeze({
 		[P.AssignSkins] = true,
 		[P.AssignPurchasedGAbilities] = true,
+		[P.ManageResources] = true,
 		[P.ViewAuditLog] = true,
 		[P.ViewRecords] = true,
 	}),
