@@ -2,7 +2,7 @@
 
 Covers GDD §10 (Resource Gathering and Economy), §11 (Crafting), §12 (Facilities) and §13 (Territory and Entitlements).
 
-Status: **draft for review**. Gathering and crafting (steps 2 and 3 in §10) are implemented. This system sits on top of the core, staff/PD, inventory and combat systems; the interfaces it uses are listed in §8.
+Status: **implemented, pending review.** Every delivery step in §10 is built. §12 lists what is still open. This system sits on top of the core, staff/PD, inventory and combat systems; the interfaces it uses are listed in §8.
 
 ---
 
@@ -367,9 +367,16 @@ src/server/Services/Production/
   Channels.luau  ProductionDeps.luau  WorldStore.luau   helpers (not *Service)
 src/client/Controllers/Production/
   GatherController.luau    proximity prompts for nodes and stations
-src/shared/Territory/ and src/server/Services/Territory/   (next step)
-tests/Specs/Production/*.spec.luau
-tools/run-production-specs.lua   runs the pure specs with plain Lua 5.4
+src/shared/Territory/
+  TerritoryConfig.luau  TerritoryRemotes.luau
+  Config/Facilities.luau  Territories.luau   (territory display names live in WorldConfig.Places)
+src/server/Services/Territory/
+  FacilityEngine.luau  TerritoryEngine.luau  EntitlementEngine.luau   pure rules
+  FacilityService.luau  TerritoryService.luau  EntitlementService.luau
+src/client/Controllers/Territory/
+  FacilityController.luau   proximity prompts for build zones and facilities
+tests/Specs/Production/*.spec.luau  tests/Specs/Territory/*.spec.luau
+tools/run-world-specs.lua   runs the pure specs with plain Lua 5.4
 ```
 
 Resources are the inventory system's `Material.*` items for now (placeholder content in its `ItemDefinitions`). Node and recipe configs reference those ids.
@@ -387,7 +394,7 @@ Each step is its own PR:
 5. **TerritoryService** (control state, anchor capture, staff rulings, access rules, map UI).
 6. **EntitlementService** (records, challenges, staff tools, death vacating).
 
-Steps 2 and 3 are implemented on this branch. Steps 4–6 come next. Step 4's damage needs a structure-damage hook from combat.
+All six steps are implemented on this branch. Facilities take damage through `CombatService:RegisterStructure`. Staff use chat commands registered with `StaffCommandService:RegisterCommand` (`/nodes`, `/node`, `/recipe`, `/facility`, `/territory`, `/ent`, `/challenge`).
 
 ---
 
@@ -404,3 +411,12 @@ Recommended: no, both are PD-only by default (GDD §3.1 places them in the event
 **Q4. Facility caps.** Should there be a per-faction cap on facility count, or per-territory caps only?
 
 **Q5. Independent affiliations.** Can Rogues and Lone Warriors build facilities or hold territory? Recommended: they can gather and craft at neutral stations, but not build or hold territory, which keeps the main conflict central (GDD §2.3).
+
+---
+
+## 12. Not done yet
+
+- **Facility storage** (§4.5). Facilities flagged `storage` don't hold items yet. Storing them needs a faction-owned container from the inventory system, which only has character containers today.
+- **Spawn points, heal zones, comms and passive extractors** are markers in config only. They need the systems that would use them.
+- **A real UI** for building, crafting and the territory map. The current clients use proximity prompts only.
+- **More than one server.** World state (nodes, facilities, territory, entitlements) is one global record per section, and the last write wins. That's fine while a PD runs on one server. Several servers at once would need cross-server messaging.

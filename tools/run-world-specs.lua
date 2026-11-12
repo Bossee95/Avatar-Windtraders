@@ -1,10 +1,10 @@
 --[[
-	Runs the production specs (tests/Specs/Production/*.spec.luau) outside Roblox Studio,
+	Runs the production and territory specs (tests/Specs/Production, tests/Specs/Territory) outside Roblox Studio,
 	with a plain Lua 5.4 interpreter, from the repository root:
 
-		lua5.4 tools/run-production-specs.lua
+		lua5.4 tools/run-world-specs.lua
 
-	NodeEngine and CraftingEngine are pure Lua, so this gives fast feedback without
+	The engines are pure Lua, so this gives fast feedback without
 	Studio. The Studio test runner runs the same specs inside the game.
 ]]
 
@@ -135,7 +135,7 @@ local function expect(actual)
 end
 
 local specs = {}
-local listing = io.popen("ls tests/Specs/Production/*.spec.luau 2>/dev/null")
+local listing = io.popen("ls tests/Specs/Production/*.spec.luau tests/Specs/Territory/*.spec.luau 2>/dev/null")
 for line in listing:lines() do
 	table.insert(specs, (line:gsub("%.luau$", "")))
 end

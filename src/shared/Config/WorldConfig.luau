@@ -111,6 +111,10 @@ WorldConfig.Places = {
 	World = { displayName = "The World" },
 	FactionABase = { displayName = "Faction A Headquarters" },
 	FactionBHome = { displayName = "Faction B Home Settlement" },
+	-- Territories (Shared.Territory.Config.Territories)
+	NorthRidge = { displayName = "North Ridge" },
+	Falls = { displayName = "The Falls" },
+	Basin = { displayName = "Lowland Basin" },
 } :: { [string]: Place }
 
 function WorldConfig.getFaction(key: string): Faction?
