@@ -29,7 +29,7 @@ local StaffService = require(script.Parent.StaffService)
 local StaffTargets = require(script.Parent.StaffTargets)
 local PDEventService = require(script.Parent.Parent.PDEvent.PDEventService)
 
-local CharacterService: any = nil
+local DataService: any = nil
 
 local P = Permissions.Permission
 
@@ -164,14 +164,9 @@ register({
 		if userId == nil then
 			return err :: string
 		end
-		local target = Players:GetPlayerByUserId(userId)
-		if target == nil then
-			return "That player is not in this server; records can only be shown for players in this server."
-		end
-		local charId = opts.char or CharacterService:GetActiveCharacterId(target)
-		local c = charId and CharacterService:GetCharacter(target, charId)
+		local c, cErr = StaffTargets.GetCharacter(DataService, userId, opts.char)
 		if c == nil then
-			return "That player has no active character."
+			return cErr :: string
 		end
 		local trials = {}
 		for _, t in c.trials do
@@ -538,7 +533,7 @@ function StaffCommandService:Run(player: Player, line: string): (boolean, string
 end
 
 function StaffCommandService:Init()
-	CharacterService = require(script.Parent.Parent.CharacterService)
+	DataService = require(script.Parent.Parent.DataService)
 end
 
 function StaffCommandService:Start()

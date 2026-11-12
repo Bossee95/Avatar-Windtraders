@@ -2,9 +2,9 @@
 -- Closed-community access gate (GDD §15.1).
 --
 -- On join, resolves the player's staff roles and checks access. Players who
--- fail are kicked. Systems that should not act for unadmitted players can
--- wait on AccessGateService:WaitForAdmission(player) (or check IsAllowed)
--- first.
+-- fail are kicked, and DataService never loads their account (load guard).
+-- Other systems can wait on AccessGateService:WaitForAdmission(player) or
+-- check IsAllowed.
 --
 --   AccessGateService:IsAllowed(player)                 -> boolean
 --   AccessGateService:WaitForAdmission(player)          -> boolean (yields until decided)
@@ -79,6 +79,8 @@ end
 local function onPlayerAdded(player: Player)
 	local allowed = evaluate(player)
 	if player.Parent == nil then
+		-- Left while being checked; release anything waiting on the decision.
+		decided:Fire(player, false)
 		return
 	end
 	decisions[player.UserId] = allowed
@@ -154,6 +156,12 @@ function AccessGateService:Init()
 	else
 		warn(`[AccessGateService] Whitelist DataStore unavailable: {result}`)
 	end
+
+	-- Accounts of players who are not admitted are never loaded or locked.
+	local DataService = require(script.Parent.Parent.DataService)
+	DataService:RegisterLoadGuard("AccessGate", function(player: Player)
+		return AccessGateService:WaitForAdmission(player)
+	end)
 end
 
 function AccessGateService:Start()

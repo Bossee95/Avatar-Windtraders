@@ -5,8 +5,8 @@
 -- decision (§4.4).
 --
 -- Every method takes the acting staff Player, the target userId and an
--- optional characterId (defaults to the target's active character when they
--- are in this server), and returns (ok, err).
+-- optional characterId (defaults to the target's active character, online
+-- or offline), and returns (ok, err).
 --
 --   :SetFaction(actor, userId, characterId?, faction, role, note?)      [ManageRanks]
 --   :SetRank(actor, userId, characterId?, rank, note?)                  [ManageRanks]
@@ -17,7 +17,6 @@
 --   :GrantAbility(actor, userId, characterId?, abilityId, source, note?)  [AssignLoreGAbilities or AssignPurchasedGAbilities by source]
 --   :RevokeAbility(actor, userId, characterId?, abilityId, note?)       [either G ability permission]
 
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Permissions = require(ReplicatedStorage.Shared.Staff.Permissions)
@@ -27,7 +26,7 @@ local StaffService = require(script.Parent.StaffService)
 local StaffTargets = require(script.Parent.StaffTargets)
 
 local ProgressionService: any = nil
-local CharacterService: any = nil
+local DataService: any = nil
 
 local P = Permissions.Permission
 
@@ -56,7 +55,7 @@ local function run(
 	if not allowed then
 		return false, permErr
 	end
-	local charId, charErr = StaffTargets.ResolveCharacterId(CharacterService, userId, characterId)
+	local charId, charErr = StaffTargets.ResolveCharacterId(DataService, userId, characterId)
 	if charId == nil then
 		return false, charErr
 	end
@@ -89,10 +88,9 @@ function LoreteamService:ApproveTrial(actor: Player, userId: number, characterId
 	return run(actor, P.ManageTrials, userId, characterId, "Lore.ApproveTrial", details, function(charId)
 		local approved = trialId
 		if approved == nil or approved == "" then
-			local player = Players:GetPlayerByUserId(userId)
-			local character = player and CharacterService:GetCharacter(player, charId)
+			local character, err = StaffTargets.GetCharacter(DataService, userId, charId)
 			if character == nil then
-				return false, "Name the Trial id (the player is not in this server, so the next Trial cannot be looked up)."
+				return false, err
 			end
 			approved = ProgressionService:GetNextTrial(character)
 			if approved == nil then
@@ -161,7 +159,7 @@ end
 
 function LoreteamService:Init()
 	ProgressionService = require(script.Parent.Parent.ProgressionService)
-	CharacterService = require(script.Parent.Parent.CharacterService)
+	DataService = require(script.Parent.Parent.DataService)
 end
 
 return LoreteamService

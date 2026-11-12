@@ -41,21 +41,48 @@ function StaffTargets.ResolveUserId(text: string): (number?, string?)
 	return nil, `No player called "{text}".`
 end
 
--- Uses the given character id, or the player's active character when they
--- are in this server.
-function StaffTargets.ResolveCharacterId(CharacterService: any, userId: number, characterId: string?): (string?, string?)
+-- Reads an account for review: the live copy if the player is in this
+-- server, otherwise a read-only peek (yields).
+function StaffTargets.PeekAccount(DataService: any, userId: number): (any?, string?)
+	local ok, account = DataService:PeekOffline(userId)
+	if not ok then
+		return nil, "Could not read that player's data right now. Try again."
+	end
+	if account == nil then
+		return nil, "That player has never joined."
+	end
+	return account, nil
+end
+
+-- Uses the given character id, or the target's active character (their
+-- current one if online, or the last one they played if offline).
+function StaffTargets.ResolveCharacterId(DataService: any, userId: number, characterId: string?): (string?, string?)
 	if characterId and characterId ~= "" then
 		return characterId, nil
 	end
-	local player = Players:GetPlayerByUserId(userId)
-	if player == nil then
-		return nil, "That player is not in this server, so give the character id (e.g. 12345-2)."
+	local account, err = StaffTargets.PeekAccount(DataService, userId)
+	if account == nil then
+		return nil, err
 	end
-	local id = CharacterService:GetActiveCharacterId(player)
+	local id = account.activeCharacterId
 	if id == nil then
-		return nil, "That player has no active character."
+		return nil, "That player has no active character. Give one with char=<id>."
 	end
 	return id, nil
+end
+
+-- Returns the character record (read-only) for review.
+function StaffTargets.GetCharacter(DataService: any, userId: number, characterId: string?): (any?, string?)
+	local account, err = StaffTargets.PeekAccount(DataService, userId)
+	if account == nil then
+		return nil, err
+	end
+	local id = characterId or account.activeCharacterId
+	local character = id and account.characters[id]
+	if character == nil then
+		return nil, if id then `No character {id} on that account.` else "That player has no active character."
+	end
+	return character, nil
 end
 
 function StaffTargets.DisplayName(userId: number): string

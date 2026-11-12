@@ -28,11 +28,12 @@ local AuditLogService = require(script.Parent.AuditLogService)
 local StaffConfig = require(script.Parent.StaffConfig)
 local StaffNotify = require(script.Parent.StaffNotify)
 local StaffService = require(script.Parent.StaffService)
+local StaffTargets = require(script.Parent.StaffTargets)
 
 -- Required lazily in Init to keep the module graph acyclic.
 local PDEventService: any = nil
 local PermadeathService: any = nil
-local CharacterService: any = nil
+local DataService: any = nil
 
 export type Report = {
 	id: string,
@@ -333,16 +334,9 @@ function DeathReviewService:ConfirmDirect(actor: Player, userId: number, charact
 	if event == nil then
 		return false, "There is no PD event. Deaths outside a PD are not permanent."
 	end
-	local charId = characterId
+	local charId, charErr = StaffTargets.ResolveCharacterId(DataService, userId, characterId)
 	if charId == nil then
-		local target = Players:GetPlayerByUserId(userId)
-		if target == nil then
-			return false, "That player is not in this server. Give the character id explicitly."
-		end
-		charId = CharacterService:GetActiveCharacterId(target)
-		if charId == nil then
-			return false, "That player has no active character."
-		end
+		return false, charErr
 	end
 
 	local ok, err = runPermadeath(actor, userId, charId :: string, event.id, note, nil)
@@ -368,7 +362,7 @@ end
 function DeathReviewService:Init()
 	PDEventService = require(script.Parent.Parent.PDEvent.PDEventService)
 	PermadeathService = require(script.Parent.Parent.PermadeathService)
-	CharacterService = require(script.Parent.Parent.CharacterService)
+	DataService = require(script.Parent.Parent.DataService)
 
 	local ok, result = pcall(DataStoreService.GetDataStore, DataStoreService, StaffConfig.DataStores.Deaths)
 	if ok then
