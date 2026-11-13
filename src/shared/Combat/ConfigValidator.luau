@@ -22,7 +22,7 @@ local SHAPE_FIELDS = {
 	Cone = { "range", "angle" },
 	None = {},
 }
-local TARGET_EFFECTS = { Knockback = "force", Stun = "duration" }
+local TARGET_EFFECTS = { Knockback = "force", Stun = "duration", Ragdoll = "duration" }
 local SELF_EFFECTS = { SelfBuff = "duration", Smoke = "duration", SelfRoot = "duration" }
 
 local ConfigValidator = {}
@@ -82,7 +82,11 @@ function ConfigValidator.validate(): { string }
 		if action.falloff and action.falloff.endRange <= action.falloff.startRange then
 			table.insert(problems, `{where}: falloff.endRange must be > startRange`)
 		end
-		for _, e in action.effects or {} do
+		local targetEffects = table.clone(action.effects or {})
+		for _, e in action.finalEffects or {} do
+			table.insert(targetEffects, e)
+		end
+		for _, e in targetEffects do
 			local need = TARGET_EFFECTS[e.type]
 			if not need then
 				table.insert(problems, `{where}: effect {e.type} is not a target effect`)

@@ -35,7 +35,7 @@ type Saved = {
 
 local saved: Saved? = nil
 
-local function ragdoll(character: Model)
+local function ragdoll(character: Model, fling: boolean?)
 	if saved then
 		return
 	end
@@ -95,7 +95,9 @@ local function ragdoll(character: Model)
 	humanoid.AutoRotate = false
 	humanoid.PlatformStand = true
 	humanoid:ChangeState(Enum.HumanoidStateType.Physics)
-	root.AssemblyLinearVelocity = -root.CFrame.LookVector * 20 + Vector3.new(0, 15, 0)
+	if fling ~= false then
+		root.AssemblyLinearVelocity = -root.CFrame.LookVector * 20 + Vector3.new(0, 15, 0)
+	end
 	saved = s
 end
 
@@ -144,8 +146,11 @@ local function watch(character: Model)
 	saved = nil
 	local function update()
 		local mode = character:GetAttribute("Knocked")
-		if mode == "Down" then
-			ragdoll(character)
+		-- R's launch ragdolls briefly (CombatService sets CombatRagdollUntil).
+		local hitUntil = character:GetAttribute("CombatRagdollUntil")
+		local hitRagdoll = type(hitUntil) == "number" and workspace:GetServerTimeNow() < hitUntil
+		if mode == "Down" or hitRagdoll then
+			ragdoll(character, not hitRagdoll)
 		else
 			unragdoll(character)
 			local humanoid = character:FindFirstChildOfClass("Humanoid")
@@ -156,6 +161,13 @@ local function watch(character: Model)
 		end
 	end
 	character:GetAttributeChangedSignal("Knocked"):Connect(update)
+	character:GetAttributeChangedSignal("CombatRagdollUntil"):Connect(function()
+		update()
+		local untilTime = character:GetAttribute("CombatRagdollUntil")
+		if type(untilTime) == "number" then
+			task.delay(math.max(0, untilTime - workspace:GetServerTimeNow()) + 0.05, update)
+		end
+	end)
 	update()
 end
 

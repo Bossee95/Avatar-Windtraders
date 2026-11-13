@@ -407,6 +407,26 @@ local function getEffectsFolder(): Folder
 	return folder :: Folder
 end
 
+-- Falls limp for `duration` and can't act (R's launch). Player characters
+-- ragdoll on their own client (KnockController reads CombatRagdollUntil);
+-- NPCs just go limp on the server.
+local function ragdoll(hit: HitDetection.Hit, duration: number)
+	if duration <= 0 then
+		return
+	end
+	StatusEffects.stun(hit.humanoid, duration)
+	local untilTime = workspace:GetServerTimeNow() + duration
+	hit.model:SetAttribute("CombatRagdollUntil", untilTime)
+	if not Players:GetPlayerFromCharacter(hit.model) then
+		hit.humanoid.PlatformStand = true
+		task.delay(duration, function()
+			if hit.model:GetAttribute("CombatRagdollUntil") == untilTime then
+				hit.humanoid.PlatformStand = false
+			end
+		end)
+	end
+end
+
 local function applyKnockback(attackerRoot: BasePart, hit: HitDetection.Hit, force: number)
 	local offset = hit.root.Position - attackerRoot.Position
 	local flat = Vector3.new(offset.X, 0, offset.Z)
@@ -761,6 +781,8 @@ local function performHit(
 					applyKnockback(attackerRoot, hit, effect.force or 0)
 				elseif effect.type == "Stun" then
 					StatusEffects.stun(hit.humanoid, effect.duration or 0)
+				elseif effect.type == "Ragdoll" then
+					ragdoll(hit, effect.duration or 0)
 				end
 			end
 		end

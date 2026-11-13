@@ -29,7 +29,8 @@
 	  hits        Optional number of repeated hit checks (default 1).
 	  hitInterval Seconds between repeated hits.
 	  falloff     Optional { startRange, endRange, minMultiplier } for ranged.
-	  effects     Applied to each target hit (Knockback, Stun).
+	  effects     Applied to each target hit (Knockback, Stun, Ragdoll = fall
+	              limp for duration, can't act).
 	  selfEffects Applied to the user (SelfBuff, Smoke, SelfRoot).
 	  blockDrain  Optional block charges a blocked hit removes (default 1, §6.6).
 	  unblockable Optional; true goes through blocks (grabs). Dodges still avoid it.
@@ -54,7 +55,7 @@ export type Hitbox = {
 }
 
 export type Effect = {
-	type: "Knockback" | "Stun" | "SelfBuff" | "Smoke" | "SelfRoot",
+	type: "Knockback" | "Stun" | "Ragdoll" | "SelfBuff" | "Smoke" | "SelfRoot",
 	force: number?,
 	duration: number?,
 	damageMultiplier: number?,
@@ -365,7 +366,7 @@ local Actions: { [string]: Action } = {
 		damage = 7,
 		hits = 4,
 		hitInterval = 0.15,
-		finalEffects = { { type = "Knockback", force = 95 } },
+		finalEffects = { { type = "Knockback", force = 95 }, { type = "Ragdoll", duration = 0.8 } },
 		hyperArmor = true,
 		glow = CRIT_GLOW,
 		animation = "Crit_Sword_Execute",
@@ -380,7 +381,7 @@ local Actions: { [string]: Action } = {
 		damage = 5,
 		hits = 4,
 		hitInterval = 0.15,
-		finalEffects = { { type = "Knockback", force = 80 } },
+		finalEffects = { { type = "Knockback", force = 80 }, { type = "Ragdoll", duration = 0.8 } },
 		hyperArmor = true,
 		glow = CRIT_GLOW,
 		animation = "Crit_Sword_Cleave",
@@ -396,7 +397,7 @@ local Actions: { [string]: Action } = {
 		damage = 7,
 		hits = 4,
 		hitInterval = 0.15,
-		finalEffects = { { type = "Knockback", force = 95 } },
+		finalEffects = { { type = "Knockback", force = 95 }, { type = "Ragdoll", duration = 0.8 } },
 		hyperArmor = true,
 		glow = CRIT_GLOW,
 		animation = "Crit_Spear_Impale",
@@ -411,7 +412,7 @@ local Actions: { [string]: Action } = {
 		damage = 4,
 		hits = 4,
 		hitInterval = 0.15,
-		finalEffects = { { type = "Knockback", force = 80 } },
+		finalEffects = { { type = "Knockback", force = 80 }, { type = "Ragdoll", duration = 0.8 } },
 		hyperArmor = true,
 		glow = CRIT_GLOW,
 		animation = "Crit_Spear_Sweep",
