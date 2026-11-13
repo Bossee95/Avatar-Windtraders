@@ -19,6 +19,7 @@
 		- factions may trade (EconomyConfig.AllowCrossFactionTrade)
 		- every offered item is in the offering character's carried inventory
 		- every offered item is tradeable (not tagged Untradeable)
+		- neither character ends up over a carry cap (one weapon per character)
 		- the trade is still in countdown and was not cancelled
 
 	A trade can apply only once: finishing moves it to "Completed", and the countdown
@@ -157,7 +158,22 @@ function TradeEngine:_checkTrade(trade)
 			return false, reason
 		end
 	end
-	return true
+	-- Inventory rules on the result, e.g. the one-weapon-per-character cap.
+	return self._d.inventory:ValidateTransfers(self:_buildTransfers(trade))
+end
+
+function TradeEngine:_buildTransfers(trade)
+	local Container = self._d.inventory.Container
+	local aInv = Container.Character(trade.a.characterId)
+	local bInv = Container.Character(trade.b.characterId)
+	local transfers = {}
+	for _, entry in ipairs(trade.a.offer) do
+		table.insert(transfers, { uid = entry.uid, quantity = entry.quantity, from = aInv, to = bInv })
+	end
+	for _, entry in ipairs(trade.b.offer) do
+		table.insert(transfers, { uid = entry.uid, quantity = entry.quantity, from = bInv, to = aInv })
+	end
+	return transfers
 end
 
 -- offer: array of { uid, quantity }
@@ -431,16 +447,7 @@ function TradeEngine:_finalize(trade, token)
 		return false, reason
 	end
 
-	local Container = self._d.inventory.Container
-	local aInv = Container.Character(trade.a.characterId)
-	local bInv = Container.Character(trade.b.characterId)
-	local transfers = {}
-	for _, entry in ipairs(trade.a.offer) do
-		table.insert(transfers, { uid = entry.uid, quantity = entry.quantity, from = aInv, to = bInv })
-	end
-	for _, entry in ipairs(trade.b.offer) do
-		table.insert(transfers, { uid = entry.uid, quantity = entry.quantity, from = bInv, to = aInv })
-	end
+	local transfers = self:_buildTransfers(trade)
 
 	-- Record item ids before the move (stackable uids may merge into the receiver's stacks).
 	for _, side in ipairs({ trade.a, trade.b }) do

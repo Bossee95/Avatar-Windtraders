@@ -9,6 +9,11 @@
 ]]
 
 local EconomyConfig = {
+	-- Only one weapon (tool) can be allocated to a character at a time. A character
+	-- cannot carry a second weapon: grants, trades and satchel looting that would give
+	-- it one are refused ("WeaponLimit"). Swapping one weapon for another in a trade is fine.
+	MaxWeaponsPerCharacter = 1,
+
 	-- [GDD §19.1] Inventory and storage on death.
 	-- false: only items the character is carrying go into the death satchel. Separately
 	-- stored items survive (they stay in the character's storage container, which is

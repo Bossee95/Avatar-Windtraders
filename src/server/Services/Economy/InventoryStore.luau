@@ -17,6 +17,12 @@
 	either moves every item or none of them.
 
 	Item instance: { uid, itemId, quantity, container }
+
+	Category caps: `categoryLimits` (e.g. { Weapon = 1 }) limits how many items of a
+	category one character may carry. Only character containers (char:*) are capped;
+	satchels are not. Grants and transfers that would go over a cap are refused with
+	"<Category>Limit" (e.g. "WeaponLimit"). A swap stays legal: items leaving in the
+	same batch are counted before items arriving.
 ]]
 
 local InventoryStore = {}
@@ -39,8 +45,9 @@ end
 
 --[[
 	deps:
-		registry  ItemRegistry
-		newId     function(): string   unique id generator (HttpService:GenerateGUID on Roblox)
+		registry        ItemRegistry
+		newId           function(): string   unique id generator (HttpService:GenerateGUID on Roblox)
+		categoryLimits  { [category]: number }?  per-character caps, e.g. { Weapon = 1 }
 ]]
 function InventoryStore.new(deps)
 	assert(deps and deps.registry, "InventoryStore needs a registry")
@@ -54,8 +61,51 @@ function InventoryStore.new(deps)
 		_items = {}, -- uid -> item
 		_containers = {}, -- key -> { [uid] = true }
 		_listeners = {},
+		_limits = deps.categoryLimits or {},
 	}, InventoryStore)
 	return self
+end
+
+local function isCapped(key)
+	return type(key) == "string" and key:sub(1, 5) == "char:"
+end
+
+-- Number of items of a category in a container (stack quantities included).
+function InventoryStore:CountCategory(key, category)
+	local total = 0
+	for uid in pairs(self._containers[key] or {}) do
+		local item = self._items[uid]
+		local def = self._registry:Get(item.itemId)
+		if def and def.category == category then
+			total = total + item.quantity
+		end
+	end
+	return total
+end
+
+-- deltas: { [containerKey] = { [category] = change } }. Returns false, reason if any
+-- capped container would end up over its limit.
+function InventoryStore:_checkLimits(deltas)
+	for key, byCategory in pairs(deltas) do
+		if isCapped(key) then
+			for category, change in pairs(byCategory) do
+				local limit = self._limits[category]
+				if limit and change > 0 and self:CountCategory(key, category) + change > limit then
+					return false, category .. "Limit"
+				end
+			end
+		end
+	end
+	return true
+end
+
+-- Whether quantity of itemId may be added to the container.
+function InventoryStore:CanGrant(key, itemId, quantity)
+	local def = self._registry:Get(itemId)
+	if not def then
+		return false, "UnknownItem"
+	end
+	return self:_checkLimits({ [key] = { [def.category] = quantity or 1 } })
 end
 
 -- Registers fn(changedKeys: { [containerKey] = true }) to run after every mutation.
@@ -130,11 +180,16 @@ function InventoryStore:_add(key, itemId, quantity)
 	return touched
 end
 
--- Gives a character (or any container) new items. Returns the item instances.
+-- Gives a character (or any container) new items. Returns the item instances, or
+-- nil and a reason (e.g. "WeaponLimit") if a category cap would be exceeded.
 function InventoryStore:Grant(key, itemId, quantity)
 	quantity = quantity or 1
 	assert(self._registry:Exists(itemId), ("unknown item %s"):format(tostring(itemId)))
 	assert(isPositiveInteger(quantity), "quantity must be a positive integer")
+	local allowed, reason = self:CanGrant(key, itemId, quantity)
+	if not allowed then
+		return nil, reason
+	end
 	local touched = self:_add(key, itemId, quantity)
 	self:_emit({ [key] = true })
 	return touched
@@ -212,6 +267,7 @@ end
 ]]
 function InventoryStore:ValidateTransfers(transfers)
 	local claimed = {}
+	local deltas = {}
 	for _, t in ipairs(transfers) do
 		local item = self._items[t.uid]
 		if not item then
@@ -230,8 +286,15 @@ function InventoryStore:ValidateTransfers(transfers)
 		if claimed[t.uid] > item.quantity then
 			return false, "InsufficientQuantity"
 		end
+		local def = self._registry:Get(item.itemId)
+		if def and self._limits[def.category] then
+			deltas[t.from] = deltas[t.from] or {}
+			deltas[t.to] = deltas[t.to] or {}
+			deltas[t.from][def.category] = (deltas[t.from][def.category] or 0) - t.quantity
+			deltas[t.to][def.category] = (deltas[t.to][def.category] or 0) + t.quantity
+		end
 	end
-	return true
+	return self:_checkLimits(deltas)
 end
 
 --[[
