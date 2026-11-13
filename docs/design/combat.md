@@ -108,6 +108,24 @@ Rules in `src/shared/Combat/KnockCore.luau` (specs in
   rejects attacks, blocks, dodges and weapon switching.
 * After a carry or grip ends the target can't be picked up for `DropImmunity`.
 
+## Lag compensation
+
+Melee (Box and Radius) hitboxes forgive the attacker's latency: a player the
+server-time hitbox misses still counts if, rewound by the attacker's ping plus
+`InterpolationDelay` (capped at `MaxRewind`), they were inside the hitbox plus
+`Padding`, with clear line of sight. Positions are sampled `SampleRate` times
+a second into `Shared/Combat/LagHistory` ring buffers. Rays and cones use
+server time. Settings: `CombatSettings.LagCompensation`. This replaces the
+third-party "Rewind" library the old Studio combat used (it was not brought
+over: its licence is unknown).
+
+## Effects and HUD
+
+`CombatVFXController` plays the particle folders named in
+`Config/Effects.luau` (from `ReplicatedStorage.VFX` in the place) on hits,
+blocks, perfect blocks, block breaks and dodges. `CombatHUDController` is a
+plain placeholder readout of block and dodge charges and the downed timer.
+
 ## Weapon models
 
 `CombatService` welds `ServerStorage.WeaponModels.<variationId>` (or

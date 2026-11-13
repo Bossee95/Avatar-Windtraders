@@ -18,9 +18,13 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Actions = require(ReplicatedStorage.Shared.Combat.Config.Actions)
 local CombatSettings = require(ReplicatedStorage.Shared.Combat.Config.CombatSettings)
+local LagHistory = require(ReplicatedStorage.Shared.Combat.LagHistory)
+
+local LAG = CombatSettings.LagCompensation
 
 export type Hit = {
 	model: Model,
@@ -191,6 +195,101 @@ local function hasLineOfSight(origin: Vector3, target: Hit, attacker: Model): bo
 	return result == nil
 end
 
+---------------------------------------------------------------- lag compensation
+
+local histories: { [Model]: LagHistory.History<Vector3> } = setmetatable({}, { __mode = "k" }) :: any
+local historyStarted = false
+
+-- Records every player character's root position SampleRate times a second.
+-- CombatService starts it once.
+function HitDetection.startHistory()
+	if historyStarted or not LAG.Enabled then
+		return
+	end
+	historyStarted = true
+	local capacity = math.ceil(LAG.SampleRate * (LAG.MaxRewind + 0.2)) + 2
+	local interval = 1 / LAG.SampleRate
+	local acc = 0
+	RunService.Heartbeat:Connect(function(dt)
+		acc += dt
+		if acc < interval then
+			return
+		end
+		acc = 0
+		local t = os.clock()
+		for _, player in Players:GetPlayers() do
+			local character = player.Character
+			local root = HitDetection.getRoot(character)
+			if character and root then
+				local h = histories[character]
+				if not h then
+					h = LagHistory.new(capacity)
+					histories[character] = h
+				end
+				LagHistory.push(h, t, root.Position)
+			end
+		end
+	end)
+end
+
+local function rewindSeconds(attacker: Model): number
+	local player = Players:GetPlayerFromCharacter(attacker)
+	if not player then
+		return 0
+	end
+	local ok, ping = pcall(function()
+		return player:GetNetworkPing()
+	end)
+	local seconds = (if ok and type(ping) == "number" then ping else 0) + LAG.InterpolationDelay
+	return math.clamp(seconds, 0, LAG.MaxRewind)
+end
+
+-- Adds player targets that the server-time hitbox missed but that were inside
+-- it (plus Padding) where the attacker saw them. `inside` tests a position.
+local function addRewound(hits: { Hit }, attacker: Model, origin: Vector3, inside: (Vector3) -> boolean)
+	if not LAG.Enabled or not historyStarted then
+		return
+	end
+	local rewind = rewindSeconds(attacker)
+	if rewind <= 0 then
+		return
+	end
+	local seen: { [Model]: boolean } = {}
+	for _, hit in hits do
+		seen[hit.model] = true
+	end
+	local at = os.clock() - rewind
+	local added = false
+	for _, player in Players:GetPlayers() do
+		local model = player.Character
+		if not model or model == attacker or seen[model] then
+			continue
+		end
+		local h = histories[model]
+		local past = h and LagHistory.at(h, at)
+		local humanoid = aliveHumanoid(model)
+		local root = HitDetection.getRoot(model)
+		if not past or not humanoid or not root or not inside(past) then
+			continue
+		end
+		-- Never through walls: the past position must be visible from the attacker.
+		local blocked = workspace:Raycast(origin, past - origin, rayParams({ attacker, model }))
+		if blocked then
+			continue
+		end
+		table.insert(
+			hits,
+			{ model = model, humanoid = humanoid, root = root, distance = (past - origin).Magnitude }
+		)
+		added = true
+	end
+	if added then
+		table.sort(hits, function(a, b)
+			return a.distance < b.distance
+		end)
+	end
+end
+
 -- Returns the characters hit and, when structureOf is given, the
 -- registered structures hit. maxTargets caps each list separately.
 function HitDetection.query(
@@ -215,11 +314,19 @@ function HitDetection.query(
 		local parts = workspace:GetPartBoundsInBox(cf, size, overlapParams(attacker))
 		hits = collect(parts, root.Position)
 		structures = collectStructures(parts, root.Position, structureOf)
+		local half = size / 2 + Vector3.one * LAG.Padding
+		addRewound(hits, attacker, root.Position, function(position)
+			local p = cf:PointToObjectSpace(position)
+			return math.abs(p.X) <= half.X and math.abs(p.Y) <= half.Y and math.abs(p.Z) <= half.Z
+		end)
 	elseif shape == "Radius" then
-		local parts =
-			workspace:GetPartBoundsInRadius(root.Position, hitbox.radius :: number, overlapParams(attacker))
+		local radius = hitbox.radius :: number
+		local parts = workspace:GetPartBoundsInRadius(root.Position, radius, overlapParams(attacker))
 		hits = collect(parts, root.Position)
 		structures = collectStructures(parts, root.Position, structureOf)
+		addRewound(hits, attacker, root.Position, function(position)
+			return (position - root.Position).Magnitude <= radius + LAG.Padding
+		end)
 	elseif shape == "Ray" then
 		local origin = eyeOrigin(attacker, root)
 		local dir = HitDetection.sanitiseAim(aim, root)

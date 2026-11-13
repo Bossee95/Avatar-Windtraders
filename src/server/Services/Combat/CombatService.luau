@@ -1086,6 +1086,7 @@ function CombatService:Init()
 end
 
 function CombatService:Start()
+	HitDetection.startHistory()
 	local ok, service = pcall(Loader.Get, "CharacterService")
 	if ok and service then
 		CharacterService = service

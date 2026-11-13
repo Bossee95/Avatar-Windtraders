@@ -61,6 +61,18 @@ local CombatSettings = {
 	},
 	DefenseRateLimit = 8,
 
+	-- Lag compensation for melee (Box and Radius hitboxes). A player target the
+	-- server-time hitbox misses still counts if it was inside the hitbox where
+	-- the attacker saw it: rewound by the attacker's ping plus
+	-- InterpolationDelay, never more than MaxRewind. Ranged hits use server time.
+	LagCompensation = {
+		Enabled = true,
+		SampleRate = 30, -- position samples per second
+		MaxRewind = 0.4, -- seconds
+		InterpolationDelay = 0.1, -- how far behind clients render other players
+		Padding = 1.5, -- studs of forgiveness around the hitbox
+	},
+
 	-- Downed, carry and execution (GDD §6.7). V carries, B executes.
 	Knock = {
 		HealthLimit = 6, -- a character is downed here instead of dying

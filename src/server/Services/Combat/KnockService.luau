@@ -78,7 +78,15 @@ local function rootOf(model: Model?): BasePart?
 end
 
 local function setMode(entry: Entry)
-	entry.model:SetAttribute("Knocked", if entry.state then entry.state.mode else nil)
+	local state = entry.state
+	entry.model:SetAttribute("Knocked", if state then state.mode else nil)
+	-- Server time the character gets up, for HUDs (only while the timer runs).
+	entry.model:SetAttribute(
+		"KnockRecoverAt",
+		if state and state.mode == "Down"
+			then workspace:GetServerTimeNow() + KnockCore.timeLeft(state, now())
+			else nil
+	)
 end
 
 local function setAction(player: Player, kind: string?)
@@ -342,6 +350,7 @@ function KnockService:Track(model: Model)
 			if entry.state then
 				if damaged then
 					KnockCore.onDamaged(SETTINGS, entry.state, now())
+					setMode(entry)
 				end
 				if health < SETTINGS.HealthLimit then
 					humanoid.Health = SETTINGS.HealthLimit
