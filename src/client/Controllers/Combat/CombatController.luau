@@ -9,7 +9,7 @@
 	Controls (GDD §5.4):
 	  M1  basic attack / combo (hold to keep attacking)
 	  Z X C  kit abilities
-	  R   Critical attack of the equipped variation
+	  R / M2  Critical attack of the equipped variation
 	  G   selected G ability
 
 	Animations come from Shared.Combat.Config.Animations. Placeholder ids
@@ -40,6 +40,7 @@ local Animations = require(Shared.Combat.Config.Animations)
 local Actions = require(Shared.Combat.Config.Actions)
 local Variations = require(Shared.Combat.Config.Variations)
 local GAbilities = require(Shared.Combat.Config.GAbilities)
+local Push = require(Shared.Combat.Push)
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -80,7 +81,7 @@ local function getAnimator(): Animator?
 	return animator
 end
 
-local function playAnimation(key: string)
+local function playAnimation(key: string, speed: number?)
 	local id = Animations[key]
 	if not id or id == PLACEHOLDER_ID then
 		return
@@ -96,7 +97,7 @@ local function playAnimation(key: string)
 		track = animator:LoadAnimation(animation)
 		trackCache[key] = track
 	end
-	track:Play(0.05)
+	track:Play(0.05, 1, speed or 1)
 end
 
 -- Where the player is aiming: from the head towards the mouse hit point.
@@ -193,7 +194,7 @@ function CombatController:Start()
 		end
 		local action = Actions[actionId]
 		if action then
-			playAnimation(action.animation)
+			playAnimation(action.animation, action.animationSpeed)
 		end
 	end)
 
@@ -201,7 +202,7 @@ function CombatController:Start()
 		local character = LocalPlayer.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart")
 		if root and root:IsA("BasePart") and typeof(velocity) == "Vector3" then
-			root.AssemblyLinearVelocity = velocity
+			Push.apply(root, velocity)
 		end
 	end)
 
@@ -227,6 +228,9 @@ function CombatController:Start()
 					task.wait(M1_REPEAT_INTERVAL)
 				end
 			end)
+		elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
+			-- M2 also fires the Critical (R).
+			send("R")
 		else
 			local mapped = KEY_TO_INPUT[input.KeyCode]
 			if mapped then

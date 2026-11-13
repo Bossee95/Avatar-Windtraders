@@ -55,6 +55,7 @@ local GAbilities = require(CombatShared.Config.GAbilities)
 local CombatSettings = require(CombatShared.Config.CombatSettings)
 
 local Defense = require(CombatShared.Defense)
+local Push = require(CombatShared.Push)
 local DEFENSE_SETTINGS: Defense.Settings = CombatSettings :: any
 
 local CombatTag = require(script.Parent.CombatTag)
@@ -72,6 +73,8 @@ type PlayerState = {
 	buffMultiplier: number,
 	buffUntil: number,
 	weaponPart: BasePart?,
+	swingLandsAt: number, -- when the current action's last hit check happens
+	armorUntil: number, -- hyper armour (action.hyperArmor)
 }
 
 local CombatService = {}
@@ -183,6 +186,8 @@ local function getState(player: Player): PlayerState
 			token = 0,
 			buffMultiplier = 1,
 			buffUntil = 0,
+			swingLandsAt = 0,
+			armorUntil = 0,
 		}
 		states[player] = state
 	end
@@ -374,6 +379,8 @@ local function resetActionState(state: PlayerState)
 	state.comboIndex = nil
 	state.lastM1End = nil
 	state.busyUntil = 0
+	state.swingLandsAt = 0
+	state.armorUntil = 0
 end
 
 local function forceUnequip(player: Player, reason: string)
@@ -404,13 +411,18 @@ local function applyKnockback(attackerRoot: BasePart, hit: HitDetection.Hit, for
 	local offset = hit.root.Position - attackerRoot.Position
 	local flat = Vector3.new(offset.X, 0, offset.Z)
 	local dir = if flat.Magnitude > 1e-3 then flat.Unit else attackerRoot.CFrame.LookVector
+	force *= CombatSettings.KnockbackScale
 	local velocity = dir * force + Vector3.new(0, force * 0.3, 0)
 	local targetPlayer = Players:GetPlayerFromCharacter(hit.model)
 	if targetPlayer then
 		-- Player characters are simulated by their own client.
 		Net.Fire("CombatKnockback", targetPlayer, velocity)
 	else
-		hit.root.AssemblyLinearVelocity = velocity
+		-- NPCs: simulate the push on the server so it isn't overwritten.
+		pcall(function()
+			hit.root:SetNetworkOwner(nil)
+		end)
+		Push.apply(hit.root, velocity)
 	end
 end
 
@@ -486,7 +498,11 @@ local function setBlock(player: Player, raise: any)
 	then
 		return
 	end
-	if os.clock() < getState(player).busyUntil then
+	-- Blocking is allowed the moment your own swing has landed (Bossee: "moment
+	-- swing finishes"), so a perfect block fits between your own M1s. It
+	-- cancels the rest of your recovery; the combo continues afterwards.
+	local state = getState(player)
+	if os.clock() < state.swingLandsAt then
 		return
 	end
 	local d = getDefense(player)
@@ -495,6 +511,10 @@ local function setBlock(player: Player, raise: any)
 	if not ok then
 		Net.Fire("CombatNotice", player, "BlockRejected", reason)
 	elseif not wasBlocking then
+		-- Cancels the rest of the recovery and any queued input.
+		state.busyUntil = math.min(state.busyUntil, os.clock())
+		state.armorUntil = 0
+		state.token += 1
 		Net.FireAll("CombatDefense", character, "BlockStart")
 	end
 	pushDefense(player)
@@ -640,7 +660,8 @@ local function performHit(
 	state: PlayerState,
 	actionId: string,
 	action: Actions.Action,
-	aim: any
+	aim: any,
+	isFinal: boolean
 ): { Model }
 	local character = player.Character
 	local attackerRoot = HitDetection.getRoot(character)
@@ -666,12 +687,14 @@ local function performHit(
 
 		-- Defence: blocks, perfect blocks and dodges (players only; NPCs just take the hit).
 		local outcome: Defense.HitOutcome
+		local wasBlocking = targetPlayer ~= nil and getDefense(targetPlayer).blocking
 		if targetPlayer then
 			outcome = Defense.resolveHit(DEFENSE_SETTINGS, getDefense(targetPlayer), os.clock(), {
 				damage = amount,
 				blockDrain = action.blockDrain,
 				fromBehind = isFromBehind(attackerRoot, hit.root),
 				unblockable = action.unblockable,
+				guardBreak = action.kind == "Critical",
 			})
 		else
 			outcome =
@@ -690,7 +713,10 @@ local function performHit(
 				state.token += 1
 			end
 		end
-		if targetPlayer and outcome.kind ~= "Hit" then
+		if targetPlayer and (outcome.kind ~= "Hit" or wasBlocking) then
+			if wasBlocking and not getDefense(targetPlayer).blocking then
+				Net.FireAll("CombatDefense", hit.model, "BlockEnd")
+			end
 			pushDefense(targetPlayer)
 		end
 		-- Blocked and dodged hits still put both sides in combat.
@@ -713,23 +739,36 @@ local function performHit(
 				hit.humanoid:TakeDamage(amount)
 			end
 		end
-		if outcome.kind == "BlockBroken" then
-			StatusEffects.stun(hit.humanoid, outcome.defenderStun)
-		elseif outcome.defenderStun > 0 then
-			StatusEffects.stagger(hit.humanoid, outcome.defenderStun)
-		end
-		for _, effect in action.effects or {} do
-			if effect.type == "Knockback" then
-				applyKnockback(attackerRoot, hit, effect.force or 0)
-			elseif effect.type == "Stun" then
-				StatusEffects.stun(hit.humanoid, effect.duration or 0)
+		-- Hyper armour (e.g. R's flurry): damage lands but nothing interrupts.
+		local armored = targetPlayer ~= nil
+			and states[targetPlayer] ~= nil
+			and os.clock() < states[targetPlayer].armorUntil
+		if not armored then
+			if outcome.kind == "BlockBroken" then
+				StatusEffects.stun(hit.humanoid, outcome.defenderStun)
+			elseif outcome.defenderStun > 0 then
+				StatusEffects.stagger(hit.humanoid, outcome.defenderStun)
+			end
+			local effects = action.effects or {}
+			if isFinal and action.finalEffects then
+				effects = table.clone(effects)
+				for _, e in action.finalEffects do
+					table.insert(effects, e)
+				end
+			end
+			for _, effect in effects do
+				if effect.type == "Knockback" then
+					applyKnockback(attackerRoot, hit, effect.force or 0)
+				elseif effect.type == "Stun" then
+					StatusEffects.stun(hit.humanoid, effect.duration or 0)
+				end
 			end
 		end
 		if targetPlayer then
 			setTag(targetPlayer)
 			lastHitBy[hit.humanoid] = { userId = player.UserId, actionId = actionId, at = os.clock() }
 			-- A stun interrupts the target's windup.
-			if StatusEffects.isStunned(hit.humanoid) and states[targetPlayer] then
+			if not armored and StatusEffects.isStunned(hit.humanoid) and states[targetPlayer] then
 				states[targetPlayer].token += 1
 			end
 		end
@@ -796,6 +835,8 @@ local function useAction(player: Player, input: string, aim: any)
 	local startAt = math.max(now, state.busyUntil)
 	local duration = CombatRules.actionDuration(action)
 	state.busyUntil = startAt + duration
+	state.swingLandsAt = startAt + duration - action.recovery
+	state.armorUntil = if action.hyperArmor then startAt + duration else 0
 	if input == "M1" and weaponType and comboIndex then
 		state.comboIndex = comboIndex
 		local isLast = comboIndex >= #WeaponTypes[weaponType].m1Combo
@@ -805,7 +846,9 @@ local function useAction(player: Player, input: string, aim: any)
 		end
 	end
 	cooldowns:start(player, actionId, action.cooldown)
-	state.token += 1
+	-- The token only changes on interrupts (stun, dodge, block, reset). A
+	-- queued input must not cancel the hit of the action still in progress:
+	-- with fast M1s the next input arrives before the previous hit lands.
 	local token = state.token
 
 	Net.FireAll("CombatActionStarted", character, actionId, input)
@@ -845,7 +888,7 @@ local function useAction(player: Player, input: string, aim: any)
 					break
 				end
 			end
-			for _, model in performHit(player, state, actionId, action, aim) do
+			for _, model in performHit(player, state, actionId, action, aim, i == hits) do
 				table.insert(allTargets, model)
 			end
 		end

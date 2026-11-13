@@ -82,6 +82,24 @@ keep dodges counterable).
 * An unblocked hit **staggers** for `HitStun`: no actions, movement unaffected
   (GDD 6A.5). Block breaks and perfect-block stuns freeze movement.
 * Attacking lowers the block. NPC targets have no defence.
+* Every Critical (`kind = "Critical"`) is a guard break: a held block breaks
+  in one hit. A perfect block still stops it and stuns the attacker, which
+  cancels the rest of a flurry.
+* The block can be raised from the moment your own swing's last hit check
+  happens (`swingLandsAt`), never during your windup. Raising it cancels the
+  rest of the recovery and any queued input; the combo index is kept.
+
+### Reference-clip pacing (Bossee, 2026-11-13)
+
+* M1: a hit every ~0.28 s (windup 0.18-0.2 + recovery 0.08-0.1), 0.3 s
+  `comboEndlag` after hit 4. Spear animations play faster (`animationSpeed`)
+  to land on the shorter windups.
+* R / M2: melee Criticals are 4 hits 0.15 s apart with `hyperArmor` (hits
+  land but don't stagger, knock back or interrupt), a red `glow`, and a
+  `finalEffects` launch on the last hit; 7 s cooldown. Ranged Criticals keep
+  their shapes and cooldowns but glow and guard-break too.
+* Blocking shows a steady teal tint; a perfect block flashes teal for 0.12 s
+  (`Config/Effects`).
 
 The server tells the defender `CombatDefenseState` and everyone
 `CombatDefense(character, kind, extra)` for animations and VFX.

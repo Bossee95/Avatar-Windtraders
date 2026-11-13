@@ -506,6 +506,8 @@ Every character can defend regardless of weapon kit. Defensive actions are not p
 - Raising the block just before a hit lands is a perfect block. The hit is negated and the attacker is briefly stunned.
 - Hits from behind go through a block.
 - Some attacks, such as grabs, cannot be blocked.
+- Critical attacks (R) always break a held block, for every weapon. A perfect block still stops them.
+- A character can raise their block the moment their own swing lands, so a perfect block fits between their own basic attacks. It cannot be raised during their own wind-up.
 
 **Dodging**
 

@@ -13,6 +13,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Net = require(Shared.Net)
 local Effects = require(Shared.Combat.Config.Effects)
+local Actions = require(Shared.Combat.Config.Actions)
+local CombatRules = require(Shared.Combat.CombatRules)
 
 local CombatVFXController = {}
 
@@ -56,13 +58,59 @@ end
 local function flash(model: any)
 	local template = folder(Effects.HitFlash)
 	local highlight = template and template:FindFirstChildWhichIsA("Highlight")
-	if not highlight or typeof(model) ~= "Instance" or not model:IsA("Model") then
+	if typeof(model) ~= "Instance" or not model:IsA("Model") then
+		return
+	end
+	if not highlight then
+		-- No template in the place: a plain red flash.
+		local h = Instance.new("Highlight")
+		h.FillColor = Color3.fromRGB(255, 50, 50)
+		h.OutlineTransparency = 1
+		h.FillTransparency = 0.4
+		h.Adornee = model
+		h.Parent = model
+		Debris:AddItem(h, Effects.HitFlashTime)
 		return
 	end
 	local clone = highlight:Clone()
 	clone.Adornee = model
 	clone.Parent = model
 	Debris:AddItem(clone, Effects.HitFlashTime)
+end
+
+-- A plain full-body tint. `name` lets a steady tint be found and removed.
+local function tint(
+	model: any,
+	color: Color3,
+	transparency: number,
+	duration: number?,
+	name: string?
+): Highlight?
+	if typeof(model) ~= "Instance" or not model:IsA("Model") then
+		return nil
+	end
+	local h = Instance.new("Highlight")
+	h.Name = name or "CombatTint"
+	h.FillColor = color
+	h.OutlineColor = color
+	h.FillTransparency = transparency
+	h.OutlineTransparency = 0.2
+	h.DepthMode = Enum.HighlightDepthMode.Occluded
+	h.Adornee = model
+	h.Parent = model
+	if duration then
+		Debris:AddItem(h, duration)
+	end
+	return h
+end
+
+local function clearTint(model: any, name: string)
+	if typeof(model) == "Instance" and model:IsA("Model") then
+		local existing = model:FindFirstChild(name)
+		if existing then
+			existing:Destroy()
+		end
+	end
 end
 
 function CombatVFXController:Start()
@@ -77,6 +125,27 @@ function CombatVFXController:Start()
 	end)
 	Net.OnEvent("CombatDefense", function(character: Model, kind: string)
 		emit(character, Effects.Defense[kind])
+		if kind == "BlockStart" then
+			clearTint(character, "BlockTint")
+			tint(character, Effects.BlockTint, Effects.BlockTintTransparency, nil, "BlockTint")
+		elseif kind == "BlockEnd" or kind == "BlockBroken" or kind == "BlockBypassed" then
+			clearTint(character, "BlockTint")
+		elseif kind == "PerfectBlock" then
+			tint(character, Effects.PerfectBlockFlash, 0.2, Effects.PerfectBlockFlashTime)
+		end
+	end)
+	Net.OnEvent("CombatActionStarted", function(character: Model, actionId: string)
+		local action = Actions[actionId]
+		if action and action.glow then
+			clearTint(character, "ActionGlow")
+			tint(
+				character,
+				action.glow,
+				Effects.GlowTransparency,
+				CombatRules.actionDuration(action),
+				"ActionGlow"
+			)
+		end
 	end)
 end
 

@@ -9,6 +9,7 @@
 	  * A block has MaxCounts charges. Each blocked hit drains the attack's
 	    blockDrain (default 1). At 0 the block breaks: the hit lands with
 	    BlockBrokenDamageMultiplier and the defender is stunned.
+	  * Criticals (guardBreak) break a held block outright.
 	  * A hit within the perfect-block window after raising the block is a
 	    perfect block: no damage, a charge back, and the attacker is stunned.
 	  * Hits from behind ignore the block, cancel it and land normally.
@@ -58,6 +59,8 @@ export type HitInput = {
 	blockDrain: number?,
 	fromBehind: boolean,
 	unblockable: boolean?,
+	-- Criticals (R): a held block breaks outright; a perfect block still stops it.
+	guardBreak: boolean?,
 }
 
 export type HitOutcome = {
@@ -186,7 +189,7 @@ function Defense.resolveHit(settings: Settings, state: State, now: number, hit: 
 				attackerStun = block.PerfectBlockStun,
 			}
 		end
-		state.blockCounts -= hit.blockDrain or 1
+		state.blockCounts -= if hit.guardBreak then state.blockCounts else (hit.blockDrain or 1)
 		if state.blockCounts <= 0 then
 			state.blockCounts = 0
 			state.blocking = false

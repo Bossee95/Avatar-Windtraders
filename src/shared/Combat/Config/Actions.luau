@@ -33,7 +33,15 @@
 	  selfEffects Applied to the user (SelfBuff, Smoke, SelfRoot).
 	  blockDrain  Optional block charges a blocked hit removes (default 1, §6.6).
 	  unblockable Optional; true goes through blocks (grabs). Dodges still avoid it.
+	  finalEffects Applied only on the last of `hits` (a flurry's launch).
+	  hyperArmor  Optional; hits taken during the action don't stagger, stun,
+	              knock back or interrupt the user (damage still lands).
+	  glow        Optional Color3 the user glows for the whole action (R's red).
 	  animation   Key in Animations.luau.
+	  animationSpeed Optional playback speed for the animation (default 1).
+
+	Every Critical (R) breaks a held block outright (Bossee, 2026-11-13); a
+	perfect block still stops it. See Shared/Combat/Defense.
 ]]
 
 export type Hitbox = {
@@ -71,8 +79,15 @@ export type Action = {
 	selfEffects: { Effect }?,
 	blockDrain: number?,
 	unblockable: boolean?,
+	finalEffects: { Effect }?,
+	hyperArmor: boolean?,
+	glow: Color3?,
 	animation: string,
+	animationSpeed: number?,
 }
+
+-- R's red glow (Bossee's reference clip).
+local CRIT_GLOW = Color3.fromRGB(255, 40, 40)
 
 local function box(range: number, width: number, height: number): Hitbox
 	return { shape = "Box", range = range, width = width, height = height }
@@ -84,8 +99,8 @@ local Actions: { [string]: Action } = {
 		displayName = "Slash",
 		kind = "M1",
 		cooldown = 0,
-		windup = 0.15,
-		recovery = 0.25,
+		windup = 0.18,
+		recovery = 0.1,
 		hitbox = box(6, 5, 5),
 		damage = 8,
 		animation = "Sword_M1_1",
@@ -94,8 +109,8 @@ local Actions: { [string]: Action } = {
 		displayName = "Slash",
 		kind = "M1",
 		cooldown = 0,
-		windup = 0.15,
-		recovery = 0.25,
+		windup = 0.18,
+		recovery = 0.1,
 		hitbox = box(6, 5, 5),
 		damage = 8,
 		animation = "Sword_M1_2",
@@ -104,8 +119,8 @@ local Actions: { [string]: Action } = {
 		displayName = "Slash",
 		kind = "M1",
 		cooldown = 0,
-		windup = 0.15,
-		recovery = 0.25,
+		windup = 0.18,
+		recovery = 0.1,
 		hitbox = box(6, 5, 5),
 		damage = 8,
 		animation = "Sword_M1_3",
@@ -115,7 +130,7 @@ local Actions: { [string]: Action } = {
 		kind = "M1",
 		cooldown = 0,
 		windup = 0.2,
-		recovery = 0.35,
+		recovery = 0.1,
 		hitbox = box(6.5, 6, 5),
 		damage = 11,
 		effects = { { type = "Knockback", force = 35 } },
@@ -123,48 +138,53 @@ local Actions: { [string]: Action } = {
 	},
 
 	---------------------------------------------------------------- Spear M1
-	-- Spear timings match the uploaded spear animations from the original
-	-- Studio combat (hit lands 0.35 s in, the heavy finisher 0.5 s in).
+	-- M1 strings land a hit every ~0.28 s (Bossee's reference clip). The
+	-- uploaded spear animations hit at 0.35 s / 0.5 s, so they play faster
+	-- (animationSpeed) to line up with the windup.
 	Spear_M1_1 = {
 		displayName = "Jab",
 		kind = "M1",
 		cooldown = 0,
-		windup = 0.35,
-		recovery = 0.15,
+		windup = 0.2,
+		recovery = 0.08,
 		hitbox = box(10, 7, 9),
 		damage = 10,
 		animation = "Spear_M1_1",
+		animationSpeed = 1.75,
 	},
 	Spear_M1_2 = {
 		displayName = "Jab",
 		kind = "M1",
 		cooldown = 0,
-		windup = 0.35,
-		recovery = 0.15,
+		windup = 0.2,
+		recovery = 0.08,
 		hitbox = box(10, 7, 9),
 		damage = 10,
 		animation = "Spear_M1_2",
+		animationSpeed = 1.75,
 	},
 	Spear_M1_3 = {
 		displayName = "Jab",
 		kind = "M1",
 		cooldown = 0,
-		windup = 0.35,
-		recovery = 0.15,
+		windup = 0.2,
+		recovery = 0.08,
 		hitbox = box(10, 7, 9),
 		damage = 10,
 		animation = "Spear_M1_3",
+		animationSpeed = 1.75,
 	},
 	Spear_M1_4 = {
 		displayName = "Drive",
 		kind = "M1",
 		cooldown = 0,
-		windup = 0.5,
-		recovery = 0.3,
+		windup = 0.22,
+		recovery = 0.1,
 		hitbox = box(10, 7, 9),
 		damage = 15,
 		effects = { { type = "Knockback", force = 40 } },
 		animation = "Spear_M1_4",
+		animationSpeed = 2.25,
 	},
 
 	------------------------------------------------------------ Ranged M1
@@ -331,49 +351,69 @@ local Actions: { [string]: Action } = {
 	},
 
 	-------------------------------------------------------- Criticals (R)
+	-- Melee Criticals are the clip's R: a red-glowing flurry of 4 hits 0.15 s
+	-- apart with hyper armour, breaking blocks, ending in a launch; ~7 s
+	-- cooldown. Variations differ in reach, targets and the finish.
 	Crit_Sword_Execute = {
 		displayName = "Execute",
 		kind = "Critical",
-		cooldown = 25,
-		windup = 0.6,
-		recovery = 0.6,
-		hitbox = box(6, 4, 5),
+		cooldown = 7,
+		windup = 0.25,
+		recovery = 0.35,
+		hitbox = box(7, 5, 5),
 		maxTargets = 1,
-		damage = 30,
+		damage = 7,
+		hits = 4,
+		hitInterval = 0.15,
+		finalEffects = { { type = "Knockback", force = 95 } },
+		hyperArmor = true,
+		glow = CRIT_GLOW,
 		animation = "Crit_Sword_Execute",
 	},
 	Crit_Sword_Cleave = {
 		displayName = "Cleave",
 		kind = "Critical",
-		cooldown = 25,
-		windup = 0.5,
-		recovery = 0.6,
+		cooldown = 7,
+		windup = 0.25,
+		recovery = 0.35,
 		hitbox = { shape = "Radius", radius = 9 },
-		damage = 18,
-		effects = { { type = "Knockback", force = 40 } },
+		damage = 5,
+		hits = 4,
+		hitInterval = 0.15,
+		finalEffects = { { type = "Knockback", force = 80 } },
+		hyperArmor = true,
+		glow = CRIT_GLOW,
 		animation = "Crit_Sword_Cleave",
 	},
 	Crit_Spear_Impale = {
 		displayName = "Impale",
 		kind = "Critical",
-		cooldown = 25,
-		windup = 0.6,
-		recovery = 0.6,
-		hitbox = box(15, 3, 4),
+		cooldown = 7,
+		windup = 0.25,
+		recovery = 0.35,
+		hitbox = box(14, 4, 5),
 		maxTargets = 1,
-		damage = 28,
-		effects = { { type = "Stun", duration = 1.0 } },
+		damage = 7,
+		hits = 4,
+		hitInterval = 0.15,
+		finalEffects = { { type = "Knockback", force = 95 } },
+		hyperArmor = true,
+		glow = CRIT_GLOW,
 		animation = "Crit_Spear_Impale",
 	},
 	Crit_Spear_Sweep = {
 		displayName = "Reaping Sweep",
 		kind = "Critical",
-		cooldown = 25,
-		windup = 0.45,
-		recovery = 0.6,
+		cooldown = 7,
+		windup = 0.25,
+		recovery = 0.35,
 		hitbox = { shape = "Radius", radius = 11 },
-		damage = 16,
-		effects = { { type = "Knockback", force = 45 } },
+		damage = 4,
+		hits = 4,
+		hitInterval = 0.15,
+		finalEffects = { { type = "Knockback", force = 80 } },
+		hyperArmor = true,
+		glow = CRIT_GLOW,
 		animation = "Crit_Spear_Sweep",
 	},
 	Crit_Bow_Heartseeker = {
@@ -385,6 +425,7 @@ local Actions: { [string]: Action } = {
 		hitbox = { shape = "Ray", range = 300 },
 		damage = 34,
 		selfEffects = { { type = "SelfRoot", duration = 1.4 } },
+		glow = CRIT_GLOW,
 		animation = "Crit_Bow_Heartseeker",
 	},
 	Crit_Bow_Scatter = {
@@ -396,6 +437,7 @@ local Actions: { [string]: Action } = {
 		hitbox = { shape = "Cone", range = 35, angle = 50 },
 		maxTargets = 5,
 		damage = 15,
+		glow = CRIT_GLOW,
 		animation = "Crit_Bow_Scatter",
 	},
 	Crit_Rifle_Overcharge = {
@@ -407,6 +449,7 @@ local Actions: { [string]: Action } = {
 		hitbox = { shape = "Ray", range = 250 },
 		damage = 30,
 		effects = { { type = "Knockback", force = 30 } },
+		glow = CRIT_GLOW,
 		animation = "Crit_Rifle_Overcharge",
 	},
 	Crit_Rifle_Pierce = {
@@ -417,6 +460,7 @@ local Actions: { [string]: Action } = {
 		recovery = 0.5,
 		hitbox = { shape = "Ray", range = 400 },
 		damage = 32,
+		glow = CRIT_GLOW,
 		animation = "Crit_Rifle_Pierce",
 	},
 

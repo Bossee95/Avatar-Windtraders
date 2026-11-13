@@ -21,6 +21,13 @@ local Effects = {
 	HitFlash = "FlashHit",
 	HitFlashTime = 0.15,
 
+	-- Body tints (Highlights), from Bossee's reference clip.
+	BlockTint = Color3.fromRGB(60, 220, 210), -- steady while holding a block
+	BlockTintTransparency = 0.65,
+	PerfectBlockFlash = Color3.fromRGB(120, 255, 240), -- ~0.1 s on a perfect block
+	PerfectBlockFlashTime = 0.12,
+	GlowTransparency = 0.45, -- an action's `glow` colour (R's red), for the whole action
+
 	-- CombatDefense kinds -> folder, played on the defender. Hits that land
 	-- through a block (BlockBroken, BlockBypassed) also play Hit.
 	Defense = {

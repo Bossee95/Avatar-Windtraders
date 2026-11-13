@@ -48,7 +48,7 @@ local CombatSettings = {
 		PerfectWindowStart = 0, -- seconds after raising the block
 		PerfectWindowEnd = 0.58,
 		BlockBrokenDamageMultiplier = 1.2,
-		PerfectBlockStun = 1.5, -- on the attacker
+		PerfectBlockStun = 0.8, -- on the attacker (reference clip: ~0.5-1 s)
 		BlockBreakStun = 1.5, -- on the defender
 		WalkSpeedMultiplier = 0.5, -- while holding a block
 	},
@@ -60,6 +60,10 @@ local CombatSettings = {
 		Duration = 0.3,
 	},
 	DefenseRateLimit = 8,
+
+	-- Knockback forces in Actions are multiplied by this. Pushes are held for
+	-- Push.DURATION so they survive Humanoid control: force 40 moves ~7 studs.
+	KnockbackScale = 0.6,
 
 	-- Lag compensation for melee (Box and Radius hitboxes). A player target the
 	-- server-time hitbox misses still counts if it was inside the hitbox where
