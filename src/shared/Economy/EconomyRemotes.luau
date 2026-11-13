@@ -1,6 +1,6 @@
 --[[
-	Remote names used by the economy systems. They must also be listed in
-	Shared.Net.Remotes (Events / Functions) so the server creates them at boot.
+	Remote names used by the economy systems. Net merges every *Remotes module
+	under Shared, so the server creates them at boot.
 
 	Payloads:
 		InventoryUpdated  S->C  { items = { {uid, itemId, quantity} } }
@@ -21,18 +21,18 @@
 
 return {
 	Events = {
-		"InventoryUpdated",
-		"TradeState",
-		"SatchelOpened",
-		"SatchelClose",
+		InventoryUpdated = true,
+		TradeState = true,
+		SatchelOpened = true,
+		SatchelClose = true,
 	},
 	Functions = {
-		"TradeRequest",
-		"TradeRespond",
-		"TradeSetOffer",
-		"TradeConfirm",
-		"TradeCancel",
-		"SatchelLoot",
-		"QueryTradeLog",
+		TradeRequest = true,
+		TradeRespond = true,
+		TradeSetOffer = true,
+		TradeConfirm = true,
+		TradeCancel = true,
+		SatchelLoot = true,
+		QueryTradeLog = true,
 	},
 }

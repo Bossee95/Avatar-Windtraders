@@ -58,10 +58,10 @@ local function makeStore(dataStore: any)
 end
 
 local function resolveStore()
-	local dataStore = DataStoreService:GetDataStore(Config.StoreName)
 	if RunService:IsStudio() and Config.MockInStudioWithoutApiAccess then
+		-- GetDataStore itself throws in an unpublished place file, so probe both.
 		local ok, err = pcall(function()
-			dataStore:GetAsync("__probe")
+			DataStoreService:GetDataStore(Config.StoreName):GetAsync("__probe")
 		end)
 		if not ok then
 			warn(
@@ -73,7 +73,7 @@ local function resolveStore()
 			return makeStore(MockDataStore.new())
 		end
 	end
-	return makeStore(dataStore)
+	return makeStore(DataStoreService:GetDataStore(Config.StoreName))
 end
 
 local function waitForStore()

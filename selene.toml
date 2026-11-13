@@ -1,1 +1,5 @@
 std = "roblox"
+
+[rules]
+# Chained filters and role checks read clearer as parallel branches.
+if_same_then_else = "allow"

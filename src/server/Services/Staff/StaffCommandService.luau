@@ -103,6 +103,10 @@ end
 	char=, hours= and days= options. Return the reply text.
 ]]
 function StaffCommandService:RegisterCommand(alias: string, spec: { usage: { string }, permissions: { string }, run: Handler })
+	-- Accept "node" as well as "/node"; other systems register both ways.
+	if string.sub(alias, 1, 1) ~= "/" then
+		alias = "/" .. alias
+	end
 	register({
 		alias = string.lower(alias),
 		usage = spec.usage,
