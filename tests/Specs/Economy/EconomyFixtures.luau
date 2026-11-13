@@ -18,6 +18,7 @@ local Fixtures = {}
 
 Fixtures.Items = {
 	{ id = "Weapon.Sword", name = "Sword", description = "A sword.", category = "Weapon", variationId = "Sword_Standard" },
+	{ id = "Weapon.Bow", name = "Bow", description = "A bow.", category = "Weapon", variationId = "Bow_Recurve" },
 	{ id = "Material.Common", name = "Common Material", description = "Plentiful.", category = "Material", stackable = true, maxStack = 50 },
 	{ id = "Material.Rare", name = "Rare Material", description = "Scarce.", category = "Material", stackable = true },
 	{ id = "Special.Heirloom", name = "Heirloom", description = "Bound.", category = "Special", untradeable = true },
@@ -43,7 +44,7 @@ function Fixtures.world(overrides)
 	w.inCombat = {}
 
 	w.registry = ItemRegistry.new(Fixtures.Items)
-	w.inventory = InventoryStore.new({ registry = w.registry })
+	w.inventory = InventoryStore.new({ registry = w.registry, categoryLimits = { Weapon = w.config.MaxWeaponsPerCharacter } })
 	w.log = TradeLog.new({
 		now = function()
 			return w.time

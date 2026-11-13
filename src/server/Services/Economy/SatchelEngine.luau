@@ -11,6 +11,7 @@
 		- Weapon skins are account-wide (SkinStore) and are never touched.
 		- A satchel belongs to the PD event the death happened in. It can be looted only
 		  while that same event is active, and it is removed when the event ends.
+		- A looter cannot take a weapon while already carrying one ("WeaponLimit").
 		- Each loot is atomic: two players grabbing the same item at once cannot both
 		  get it (the second claim fails with "ItemGone").
 

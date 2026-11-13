@@ -18,6 +18,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Net = require(ReplicatedStorage.Shared.Net)
 local ItemRegistry = require(ReplicatedStorage.Shared.Economy.ItemRegistry)
+local EconomyConfig = require(ReplicatedStorage.Shared.Economy.EconomyConfig)
 local ItemDefinitions = require(ReplicatedStorage.Shared.Economy.ItemDefinitions)
 local InventoryStore = require(script.Parent.InventoryStore)
 local EconomyDeps = require(script.Parent.EconomyDeps)
@@ -29,6 +30,7 @@ local SECTION = "Inventory"
 local registry = ItemRegistry.new(ItemDefinitions)
 local store = InventoryStore.new({
 	registry = registry,
+	categoryLimits = { Weapon = EconomyConfig.MaxWeaponsPerCharacter },
 	newId = function()
 		return HttpService:GenerateGUID(false)
 	end,
@@ -90,6 +92,12 @@ local function loadCharacter(player, characterId)
 	local skipped = store:Load(key, section.items)
 	if #skipped > 0 then
 		warn(("[Inventory] %d unknown item(s) skipped for character %s"):format(#skipped, characterId))
+	end
+	local weapons = store:CountCategory(key, "Weapon")
+	if weapons > EconomyConfig.MaxWeaponsPerCharacter then
+		-- Saved before the one-weapon rule. Nothing is deleted; the character just
+		-- cannot gain another weapon until it is down to the limit.
+		warn(("[Inventory] character %s carries %d weapons (limit %d)"):format(characterId, weapons, EconomyConfig.MaxWeaponsPerCharacter))
 	end
 	loaded[characterId] = player
 	activeKey[player] = key
@@ -209,7 +217,10 @@ function InventoryService:Grant(player, itemId, quantity)
 	if type(quantity) ~= "number" or quantity < 1 or quantity ~= math.floor(quantity) then
 		return false, "InvalidQuantity"
 	end
-	store:Grant(key, itemId, quantity)
+	local granted, reason = store:Grant(key, itemId, quantity)
+	if not granted then
+		return false, reason
+	end
 	return true
 end
 

@@ -60,6 +60,7 @@ If a later hook fails, the rollback hook undoes all of this. A satchel can only 
 | 1 | `StorageItemsDropOnDeath` | `false`: only carried items drop. No storage system exists yet. |
 | 2 | `SatchelLootableBy`, `SatchelConcurrentLooting`, `SatchelOwnerCanLoot` | Anyone can loot, several looters at once (first claim wins), and the owner's new character can't loot the old satchel |
 | 3 | `BlockTradeInCombat`, `AllowCrossFactionTrade` | No trading in combat; cross-faction trading allowed |
+| — | `MaxWeaponsPerCharacter` | `1`: a character carries at most one weapon (your rule); trades and looting that would exceed it are refused, swaps are fine |
 | 4 | `TradeCountdownSeconds`, `TradeRequestTimeoutSeconds` | 5 s countdown, 30 s request timeout, everything logged |
 | 8 | `TradeAllowedWhilePaused`, `SatchelLootWhilePaused` | Both `false` |
 

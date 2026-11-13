@@ -170,4 +170,22 @@ return function(t)
 		t.expect(w.inventory:CountOf(w.charKey(dead), "Weapon.Sword")).toBe(1)
 		t.expect(w.inventory:CountOf(w.charKey(dead), "Special.Heirloom")).toBe(1)
 	end)
+
+	t.test("a looter already carrying a weapon cannot take another", function()
+		local w = Fixtures.world()
+		local _, result = killed(w)
+		local looter = w.player(2)
+		w.give(looter, "Weapon.Bow")
+		local ok, reason = w.satchels:Loot(looter, result.satchel.id, nil)
+		t.expect(ok).toBe(false)
+		t.expect(reason).toBe("WeaponLimit")
+		-- Non-weapon items can still be taken.
+		local common
+		for _, item in ipairs(w.satchels:Contents(result.satchel.id)) do
+			if item.itemId == "Material.Common" then
+				common = item
+			end
+		end
+		t.expect((w.satchels:Loot(looter, result.satchel.id, { { uid = common.uid } }))).toBe(true)
+	end)
 end
