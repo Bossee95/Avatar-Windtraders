@@ -31,6 +31,8 @@
 	  falloff     Optional { startRange, endRange, minMultiplier } for ranged.
 	  effects     Applied to each target hit (Knockback, Stun).
 	  selfEffects Applied to the user (SelfBuff, Smoke, SelfRoot).
+	  blockDrain  Optional block charges a blocked hit removes (default 1, §6.6).
+	  unblockable Optional; true goes through blocks (grabs). Dodges still avoid it.
 	  animation   Key in Animations.luau.
 ]]
 
@@ -67,6 +69,8 @@ export type Action = {
 	falloff: { startRange: number, endRange: number, minMultiplier: number }?,
 	effects: { Effect }?,
 	selfEffects: { Effect }?,
+	blockDrain: number?,
+	unblockable: boolean?,
 	animation: string,
 }
 
@@ -119,36 +123,48 @@ local Actions: { [string]: Action } = {
 	},
 
 	---------------------------------------------------------------- Spear M1
+	-- Spear timings match the uploaded spear animations from the original
+	-- Studio combat (hit lands 0.35 s in, the heavy finisher 0.5 s in).
 	Spear_M1_1 = {
 		displayName = "Jab",
 		kind = "M1",
 		cooldown = 0,
-		windup = 0.18,
-		recovery = 0.3,
-		hitbox = box(9, 3, 4),
-		damage = 9,
+		windup = 0.35,
+		recovery = 0.15,
+		hitbox = box(10, 7, 9),
+		damage = 10,
 		animation = "Spear_M1_1",
 	},
 	Spear_M1_2 = {
 		displayName = "Jab",
 		kind = "M1",
 		cooldown = 0,
-		windup = 0.18,
-		recovery = 0.3,
-		hitbox = box(9, 3, 4),
-		damage = 9,
+		windup = 0.35,
+		recovery = 0.15,
+		hitbox = box(10, 7, 9),
+		damage = 10,
 		animation = "Spear_M1_2",
 	},
 	Spear_M1_3 = {
+		displayName = "Jab",
+		kind = "M1",
+		cooldown = 0,
+		windup = 0.35,
+		recovery = 0.15,
+		hitbox = box(10, 7, 9),
+		damage = 10,
+		animation = "Spear_M1_3",
+	},
+	Spear_M1_4 = {
 		displayName = "Drive",
 		kind = "M1",
 		cooldown = 0,
-		windup = 0.25,
-		recovery = 0.4,
-		hitbox = box(10, 3, 4),
-		damage = 12,
+		windup = 0.5,
+		recovery = 0.3,
+		hitbox = box(10, 7, 9),
+		damage = 15,
 		effects = { { type = "Knockback", force = 40 } },
-		animation = "Spear_M1_3",
+		animation = "Spear_M1_4",
 	},
 
 	------------------------------------------------------------ Ranged M1
@@ -424,6 +440,7 @@ local Actions: { [string]: Action } = {
 		hitbox = box(4, 3, 5),
 		maxTargets = 1,
 		damage = 5,
+		unblockable = true,
 		effects = { { type = "Stun", duration = 1.5 } },
 		selfEffects = { { type = "SelfRoot", duration = 1.0 } },
 		animation = "G_Grab",

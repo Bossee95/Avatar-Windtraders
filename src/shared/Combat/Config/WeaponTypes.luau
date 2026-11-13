@@ -35,9 +35,9 @@ local WeaponTypes: { [string]: WeaponType } = {
 	},
 	Spear = {
 		displayName = "Spear",
-		m1Combo = { "Spear_M1_1", "Spear_M1_2", "Spear_M1_3" },
-		comboResetTime = 1.3,
-		comboEndlag = 0.7,
+		m1Combo = { "Spear_M1_1", "Spear_M1_2", "Spear_M1_3", "Spear_M1_4" },
+		comboResetTime = 1.5,
+		comboEndlag = 2,
 		placeholderModel = { size = { 0.25, 0.25, 7 }, color = { 140, 100, 60 } },
 	},
 	Bow = {

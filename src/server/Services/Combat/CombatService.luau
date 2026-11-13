@@ -36,6 +36,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local ServerStorage = game:GetService("ServerStorage")
 local Debris = game:GetService("Debris")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -52,6 +53,9 @@ local Variations = require(CombatShared.Config.Variations)
 local WeaponTypes = require(CombatShared.Config.WeaponTypes)
 local GAbilities = require(CombatShared.Config.GAbilities)
 local CombatSettings = require(CombatShared.Config.CombatSettings)
+
+local Defense = require(CombatShared.Defense)
+local DEFENSE_SETTINGS: Defense.Settings = CombatSettings :: any
 
 local CombatTag = require(script.Parent.CombatTag)
 local Cooldowns = require(script.Parent.Cooldowns)
@@ -154,6 +158,11 @@ local function getRecord(player: Player): CombatRules.Record?
 end
 
 local function ownsVariation(player: Player, variationId: string): boolean
+	-- Studio grant-all also covers weapon ownership, so the moveset can be
+	-- tried before the inventory holds any weapon items.
+	if studioGrantAll() then
+		return true
+	end
 	if ownershipProvider then
 		local ok, result = pcall(ownershipProvider, player, variationId)
 		if not ok then
@@ -224,10 +233,97 @@ local function clearTag(player: Player)
 	player:SetAttribute("InCombat", nil)
 end
 
--- Placeholder weapon model: a coloured part welded to the right hand.
+-- Real weapon model, if the place has one: ServerStorage.WeaponModels.<variationId>,
+-- else ServerStorage.WeaponModels.<weaponType>. A BasePart, or a Model with a
+-- PrimaryPart. An Attachment named "Grip" anywhere inside is lined up with the
+-- hand's RightGripAttachment; without one the model's pivot goes to the hand.
+local function findWeaponTemplate(variationId: string, weaponType: string): Instance?
+	local folder = ServerStorage:FindFirstChild("WeaponModels")
+	if not folder then
+		return nil
+	end
+	return folder:FindFirstChild(variationId) or folder:FindFirstChild(weaponType)
+end
+
+local function attachRealModel(
+	template: Instance,
+	hand: BasePart,
+	character: Model,
+	variationId: string
+): BasePart?
+	local clone = template:Clone()
+	local root: BasePart? = nil
+	if clone:IsA("BasePart") then
+		root = clone
+	elseif clone:IsA("Model") then
+		root = clone.PrimaryPart or clone:FindFirstChildWhichIsA("BasePart", true)
+	end
+	if not root then
+		warn("[CombatService] weapon model " .. template:GetFullName() .. " has no part to hold")
+		clone:Destroy()
+		return nil
+	end
+	for _, d in clone:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.CanCollide = false
+			d.CanQuery = false
+			d.CanTouch = false
+			d.Massless = true
+			d.Anchored = false
+		end
+	end
+	if clone:IsA("BasePart") then
+		clone.CanCollide, clone.CanQuery, clone.CanTouch, clone.Massless, clone.Anchored =
+			false, false, false, true, false
+	end
+	local handGrip = hand:FindFirstChild("RightGripAttachment")
+	local grip = clone:FindFirstChild("Grip", true)
+	local target = if handGrip and handGrip:IsA("Attachment") then handGrip.WorldCFrame else hand.CFrame
+	if grip and grip:IsA("Attachment") then
+		local pivot = clone:IsA("Model") and clone:GetPivot() or root.CFrame
+		local offset = pivot:ToObjectSpace(grip.WorldCFrame)
+		local goal = target * offset:Inverse()
+		if clone:IsA("Model") then
+			clone:PivotTo(goal)
+		else
+			root.CFrame = goal
+		end
+	elseif clone:IsA("Model") then
+		clone:PivotTo(target)
+	else
+		root.CFrame = target
+	end
+	-- Weld every part to the hand so multi-part models hold together.
+	for _, d in clone:GetDescendants() do
+		if d:IsA("BasePart") then
+			local w = Instance.new("WeldConstraint")
+			w.Part0 = hand
+			w.Part1 = d
+			w.Parent = d
+		end
+	end
+	if clone:IsA("BasePart") then
+		local w = Instance.new("WeldConstraint")
+		w.Part0 = hand
+		w.Part1 = clone
+		w.Parent = clone
+	end
+	clone.Name = "EquippedWeapon"
+	clone:SetAttribute("VariationId", variationId)
+	clone.Parent = character
+	return if clone:IsA("BasePart") then clone else root
+end
+
+-- Weapon model welded to the right hand: the place's model if one exists,
+-- otherwise a coloured placeholder part.
 local function attachWeaponModel(player: Player, state: PlayerState)
 	if state.weaponPart then
-		state.weaponPart:Destroy()
+		local holder = state.weaponPart:FindFirstAncestorOfClass("Model")
+		if holder and holder.Name == "EquippedWeapon" then
+			holder:Destroy()
+		else
+			state.weaponPart:Destroy()
+		end
 		state.weaponPart = nil
 	end
 	local variation = state.variationId and Variations[state.variationId]
@@ -238,6 +334,13 @@ local function attachWeaponModel(player: Player, state: PlayerState)
 	local hand = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
 	if not hand or not hand:IsA("BasePart") then
 		return
+	end
+	local template = findWeaponTemplate(state.variationId :: string, variation.weaponType)
+	if template then
+		state.weaponPart = attachRealModel(template, hand, character, state.variationId :: string)
+		if state.weaponPart then
+			return
+		end
 	end
 	local model = WeaponTypes[variation.weaponType].placeholderModel
 	local part = Instance.new("Part")
@@ -302,6 +405,126 @@ local function applyKnockback(attackerRoot: BasePart, hit: HitDetection.Hit, for
 	else
 		hit.root.AssemblyLinearVelocity = velocity
 	end
+end
+
+---------------------------------------------------------------- defence (§6.6)
+
+local defenses: { [Player]: Defense.State } = {}
+
+local function getDefense(player: Player): Defense.State
+	local d = defenses[player]
+	if not d then
+		d = Defense.new(DEFENSE_SETTINGS, os.clock())
+		defenses[player] = d
+	end
+	return d
+end
+
+local function pushDefense(player: Player)
+	local d = getDefense(player)
+	local now = os.clock()
+	Defense.regen(DEFENSE_SETTINGS, d, now)
+	player:SetAttribute("CombatBlocking", d.blocking or nil)
+	Net.Fire("CombatDefenseState", player, {
+		blocking = d.blocking,
+		blockCounts = d.blockCounts,
+		maxBlock = DEFENSE_SETTINGS.Block.MaxCounts,
+		dodgeCharges = Defense.dodgeCharges(d, now),
+		maxDodge = DEFENSE_SETTINGS.Dodge.MaxCharges,
+	})
+end
+
+local function lowerBlock(player: Player)
+	local d = defenses[player]
+	if d and d.blocking then
+		Defense.stopBlock(DEFENSE_SETTINGS, d, os.clock())
+		if player.Character then
+			Net.FireAll("CombatDefense", player.Character, "BlockEnd")
+		end
+		pushDefense(player)
+	end
+end
+
+-- True when the attacker stands behind the defender (more than 90 degrees
+-- off the way the defender faces).
+local function isFromBehind(attackerRoot: BasePart, defenderRoot: BasePart): boolean
+	local toAttacker = attackerRoot.Position - defenderRoot.Position
+	local flat = Vector3.new(toAttacker.X, 0, toAttacker.Z)
+	if flat.Magnitude < 1e-3 then
+		return false
+	end
+	local look = defenderRoot.CFrame.LookVector
+	return Vector3.new(look.X, 0, look.Z).Unit:Dot(flat.Unit) < 0
+end
+
+local function setBlock(player: Player, raise: any)
+	if not enabled or type(raise) ~= "boolean" then
+		return
+	end
+	if not raise then
+		lowerBlock(player)
+		return
+	end
+	if not getRecord(player) then
+		return
+	end
+	local humanoid = getHumanoid(player)
+	local character = player.Character
+	if not humanoid or humanoid.Health <= 0 or not character or StatusEffects.isStunned(humanoid) then
+		return
+	end
+	if os.clock() < getState(player).busyUntil then
+		return
+	end
+	local d = getDefense(player)
+	local wasBlocking = d.blocking
+	local ok, reason = Defense.startBlock(DEFENSE_SETTINGS, d, os.clock())
+	if not ok then
+		Net.Fire("CombatNotice", player, "BlockRejected", reason)
+	elseif not wasBlocking then
+		Net.FireAll("CombatDefense", character, "BlockStart")
+	end
+	pushDefense(player)
+end
+
+local function dodge(player: Player, direction: any)
+	if not enabled or typeof(direction) ~= "Vector3" then
+		return
+	end
+	if not getRecord(player) then
+		return
+	end
+	local humanoid = getHumanoid(player)
+	local character = player.Character
+	if not humanoid or humanoid.Health <= 0 or not character or StatusEffects.isStunned(humanoid) then
+		return
+	end
+	local state = getState(player)
+	if os.clock() < state.busyUntil then
+		return
+	end
+	local flat = Vector3.new(direction.X, 0, direction.Z)
+	if flat.Magnitude < 1e-3 or flat.Magnitude ~= flat.Magnitude then
+		return
+	end
+	lowerBlock(player)
+	local d = getDefense(player)
+	local slot = Defense.dodge(DEFENSE_SETTINGS, d, os.clock())
+	if not slot then
+		Net.Fire("CombatNotice", player, "DodgeRejected", "NoCharges")
+		pushDefense(player)
+		return
+	end
+	-- A dodge cancels a windup that hasn't landed yet.
+	state.token += 1
+	state.busyUntil = os.clock() + DEFENSE_SETTINGS.Dodge.Duration
+	Net.FireAll("CombatDefense", character, "Dodge", flat.Unit)
+	pushDefense(player)
+	task.delay(DEFENSE_SETTINGS.Dodge.ChargeCooldown + 0.05, function()
+		if player.Parent then
+			pushDefense(player)
+		end
+	end)
 end
 
 local function applySelfEffects(player: Player, state: PlayerState, action: Actions.Action)
@@ -420,6 +643,47 @@ local function performHit(
 		local amount = (action.damage or 0)
 			* damageMultiplier(state)
 			* CombatRules.falloffMultiplier(action, hit.distance)
+		local targetPlayer = Players:GetPlayerFromCharacter(hit.model)
+
+		-- Defence: blocks, perfect blocks and dodges (players only; NPCs just take the hit).
+		local outcome: Defense.HitOutcome
+		if targetPlayer then
+			outcome = Defense.resolveHit(DEFENSE_SETTINGS, getDefense(targetPlayer), os.clock(), {
+				damage = amount,
+				blockDrain = action.blockDrain,
+				fromBehind = isFromBehind(attackerRoot, hit.root),
+				unblockable = action.unblockable,
+			})
+		else
+			outcome =
+				{ kind = "Hit", damage = amount, defenderStun = DEFENSE_SETTINGS.HitStun, attackerStun = 0 }
+		end
+		local landed = outcome.kind == "Hit"
+			or outcome.kind == "BlockBypassed"
+			or outcome.kind == "BlockBroken"
+		if outcome.kind ~= "Hit" then
+			Net.FireAll("CombatDefense", hit.model, outcome.kind, character)
+		end
+		if outcome.attackerStun > 0 then
+			local attackerHumanoid = getHumanoid(player)
+			if attackerHumanoid then
+				StatusEffects.stun(attackerHumanoid, outcome.attackerStun)
+				state.token += 1
+			end
+		end
+		if targetPlayer and outcome.kind ~= "Hit" then
+			pushDefense(targetPlayer)
+		end
+		-- Blocked and dodged hits still put both sides in combat.
+		setTag(player)
+		if targetPlayer then
+			setTag(targetPlayer)
+		end
+		if not landed then
+			continue
+		end
+
+		amount = outcome.damage
 		if amount > 0 then
 			if damageHandler then
 				local ok, err = pcall(damageHandler, player, hit.humanoid, amount, actionId)
@@ -430,6 +694,11 @@ local function performHit(
 				hit.humanoid:TakeDamage(amount)
 			end
 		end
+		if outcome.kind == "BlockBroken" then
+			StatusEffects.stun(hit.humanoid, outcome.defenderStun)
+		elseif outcome.defenderStun > 0 then
+			StatusEffects.stagger(hit.humanoid, outcome.defenderStun)
+		end
 		for _, effect in action.effects or {} do
 			if effect.type == "Knockback" then
 				applyKnockback(attackerRoot, hit, effect.force or 0)
@@ -437,8 +706,6 @@ local function performHit(
 				StatusEffects.stun(hit.humanoid, effect.duration or 0)
 			end
 		end
-		setTag(player)
-		local targetPlayer = Players:GetPlayerFromCharacter(hit.model)
 		if targetPlayer then
 			setTag(targetPlayer)
 			lastHitBy[hit.humanoid] = { userId = player.UserId, actionId = actionId, at = os.clock() }
@@ -505,7 +772,8 @@ local function useAction(player: Player, input: string, aim: any)
 		return
 	end
 
-	-- Commit.
+	-- Commit. Attacking lowers the block.
+	lowerBlock(player)
 	local startAt = math.max(now, state.busyUntil)
 	local duration = CombatRules.actionDuration(action)
 	state.busyUntil = startAt + duration
@@ -759,6 +1027,18 @@ function CombatService:Init()
 			return CombatRules.isInput(input) and (aim == nil or typeof(aim) == "Vector3")
 		end,
 	})
+	Net.OnEvent("CombatBlock", setBlock, {
+		rateLimit = CombatSettings.DefenseRateLimit,
+		validate = function(raise)
+			return type(raise) == "boolean"
+		end,
+	})
+	Net.OnEvent("CombatDodge", dodge, {
+		rateLimit = CombatSettings.DefenseRateLimit,
+		validate = function(direction)
+			return typeof(direction) == "Vector3"
+		end,
+	})
 	Net.OnInvoke("CombatEquip", function(player, variationId)
 		return CombatService:Equip(player, variationId)
 	end, { rateLimit = CombatSettings.EquipRateLimit, validate = isString })
@@ -852,6 +1132,8 @@ function CombatService:Start()
 		local function onCharacter(avatar: Model)
 			local state = getState(player)
 			resetActionState(state)
+			defenses[player] = nil
+			task.defer(pushDefense, player)
 			-- The weapon stays equipped across respawns; re-attach the model.
 			task.defer(attachWeaponModel, player, state)
 			CombatService:Revalidate(player)
@@ -884,6 +1166,7 @@ function CombatService:Start()
 			CombatService.CombatTagChanged:Fire(player, false)
 		end
 		states[player] = nil
+		defenses[player] = nil
 	end)
 
 	-- Expire combat tags.

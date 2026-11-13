@@ -490,6 +490,34 @@ The Development Team is responsible for technical implementation and combat bala
 
 G abilities should have clearly defined mechanics, cooldowns, restrictions and counterplay where appropriate.
 
+## 6.6 Defensive Actions
+
+Every character can defend regardless of weapon kit. Defensive actions are not part of a kit and are not granted by the Loreteam.
+
+| Input | Function |
+|---|---|
+| F (hold) | Block |
+| Q | Dodge |
+
+**Blocking**
+
+- A block absorbs a limited number of hits. Each blocked hit uses up block strength, which recovers over time while not blocking.
+- When block strength runs out the block breaks: that hit lands with extra damage and the defender is briefly stunned.
+- Raising the block just before a hit lands is a perfect block. The hit is negated and the attacker is briefly stunned.
+- Hits from behind go through a block.
+- Some attacks, such as grabs, cannot be blocked.
+
+**Dodging**
+
+- A dodge is a short burst of movement with brief invulnerability.
+- Dodges have a small number of charges that recharge individually.
+
+**Hit stun**
+
+- A character struck by an unblocked hit cannot act for a short moment, but can still move (see 6A.5).
+
+The Development Team tunes all numbers. Defensive actions must stay readable and counterable.
+
 ---
 
 # 6A. Movement System

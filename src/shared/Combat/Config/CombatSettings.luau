@@ -36,6 +36,31 @@ local CombatSettings = {
 	-- CombatService:SetTargetFilter.
 	AllowNonPlayerTargets = true,
 
+	-- Defence (GDD §6.6). First values come from the original Studio combat.
+	-- Hold F to block, Q to dodge.
+	HitStun = 0.7, -- seconds a struck character can't act (movement is unaffected)
+	Block = {
+		MaxCounts = 6, -- charges; each blocked hit drains the attack's blockDrain (default 1)
+		CountRegenTime = 4, -- seconds per charge while not blocking
+		BlockCooldown = 1, -- after lowering the block
+		BreakLockout = 1.5, -- after the block breaks
+		HitLockout = 0.7, -- after taking an unblocked hit
+		PerfectWindowStart = 0, -- seconds after raising the block
+		PerfectWindowEnd = 0.58,
+		BlockBrokenDamageMultiplier = 1.2,
+		PerfectBlockStun = 1.5, -- on the attacker
+		BlockBreakStun = 1.5, -- on the defender
+		WalkSpeedMultiplier = 0.5, -- while holding a block
+	},
+	Dodge = {
+		MaxCharges = 2,
+		ChargeCooldown = 4, -- per charge
+		IFrameDuration = 0.4,
+		Distance = 15, -- studs, applied by the dodging client and checked by the server
+		Duration = 0.3,
+	},
+	DefenseRateLimit = 8,
+
 	-- Studio-only convenience: when there is no character record or no
 	-- ownership provider, grant every kit, variation and G ability so the
 	-- moveset can be tested. Never applies in a live server.

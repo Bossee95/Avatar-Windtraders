@@ -13,8 +13,9 @@ Implements GDD §5 (weapons and kits), §6 (combat) and §16.5 (combat validatio
 
 Every move (damage, hitbox, windup, recovery, cooldown, effects, animation key)
 is an entry in `Config/Actions.luau`. Animation keys map to ids in
-`Config/Animations.luau`; all are placeholders (`rbxassetid://0`) and the client
-skips them until real animations are uploaded. All display names are in these
+`Config/Animations.luau`; the spear M1 combo and the movement/defence set use
+the original Studio animations, the rest are placeholders (`rbxassetid://0`)
+that the client skips until real animations are uploaded. All display names are in these
 config files. Global rules (combat tag duration, which states block switching,
 rate limits) are in `Config/CombatSettings.luau`.
 
@@ -58,6 +59,39 @@ abilities that exist in this config.
 A revoke takes effect on the next input, and `CharacterChanged` (Kits,
 Abilities, Status) triggers `Revalidate`, which unequips at once if the kit or
 item is gone, even mid-combat.
+
+## Defence: block, perfect block, dodge (§6.6)
+
+Rules live in the pure module `src/shared/Combat/Defense.luau` (specs in
+`tests/Specs/Combat/Defense.spec.luau`); numbers in `CombatSettings.Block`,
+`CombatSettings.Dodge` and `CombatSettings.HitStun`. First values come from the
+original hand-built Studio combat, except dodge i-frames (0.4 s, was 1 s, to
+keep dodges counterable).
+
+* **F (hold)** raises a block (`CombatBlock` true/false). Each blocked hit
+  drains the action's `blockDrain` (default 1) from `MaxCounts`; at zero it
+  breaks (hit lands x `BlockBrokenDamageMultiplier`, defender stunned).
+  Charges return one per `CountRegenTime` after any lockout.
+* A hit within `PerfectWindowStart..PerfectWindowEnd` seconds of raising the
+  block is a **perfect block**: no damage, a charge back, attacker stunned.
+* Hits from behind (more than 90 degrees off the defender's facing) and
+  `unblockable` actions go through.
+* **Q** dodges (`CombatDodge` direction). The server spends a charge, grants
+  `IFrameDuration` of invulnerability and cancels a pending windup; the
+  client moves its own character (`Dodge.Distance` over `Dodge.Duration`).
+* An unblocked hit **staggers** for `HitStun`: no actions, movement unaffected
+  (GDD 6A.5). Block breaks and perfect-block stuns freeze movement.
+* Attacking lowers the block. NPC targets have no defence.
+
+The server tells the defender `CombatDefenseState` and everyone
+`CombatDefense(character, kind, extra)` for animations and VFX.
+
+## Weapon models
+
+`CombatService` welds `ServerStorage.WeaponModels.<variationId>` (or
+`.<weaponType>`) to the right hand when it exists: a BasePart or a Model with
+a PrimaryPart. An Attachment named `Grip` inside is lined up with the hand's
+`RightGripAttachment`. Without a model it falls back to the placeholder part.
 
 ## Server validation (§16.5)
 
