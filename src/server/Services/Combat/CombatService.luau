@@ -194,13 +194,20 @@ local function getHumanoid(player: Player): Humanoid?
 	return character and character:FindFirstChildOfClass("Humanoid")
 end
 
+-- Downed, carrying someone or executing (KnockService, §6.7): no combat actions.
+local function incapacitated(player: Player): boolean
+	local character = player.Character
+	return (character ~= nil and character:GetAttribute("Knocked") ~= nil)
+		or player:GetAttribute("KnockAction") ~= nil
+end
+
 local function rulesState(player: Player): CombatRules.State
 	local state = getState(player)
 	local humanoid = getHumanoid(player)
 	return {
 		combatTagged = tags:isTagged(player),
 		busy = os.clock() < state.busyUntil,
-		stunned = StatusEffects.isStunned(humanoid),
+		stunned = StatusEffects.isStunned(humanoid) or incapacitated(player),
 		dead = humanoid == nil or humanoid.Health <= 0,
 	}
 end
@@ -470,7 +477,13 @@ local function setBlock(player: Player, raise: any)
 	end
 	local humanoid = getHumanoid(player)
 	local character = player.Character
-	if not humanoid or humanoid.Health <= 0 or not character or StatusEffects.isStunned(humanoid) then
+	if
+		not humanoid
+		or humanoid.Health <= 0
+		or not character
+		or StatusEffects.isStunned(humanoid)
+		or incapacitated(player)
+	then
 		return
 	end
 	if os.clock() < getState(player).busyUntil then
@@ -496,7 +509,13 @@ local function dodge(player: Player, direction: any)
 	end
 	local humanoid = getHumanoid(player)
 	local character = player.Character
-	if not humanoid or humanoid.Health <= 0 or not character or StatusEffects.isStunned(humanoid) then
+	if
+		not humanoid
+		or humanoid.Health <= 0
+		or not character
+		or StatusEffects.isStunned(humanoid)
+		or incapacitated(player)
+	then
 		return
 	end
 	local state = getState(player)
@@ -737,7 +756,7 @@ local function useAction(player: Player, input: string, aim: any)
 	if not character or not humanoid or humanoid.Health <= 0 then
 		return
 	end
-	if StatusEffects.isStunned(humanoid) then
+	if StatusEffects.isStunned(humanoid) or incapacitated(player) then
 		return
 	end
 
@@ -835,6 +854,17 @@ local function useAction(player: Player, input: string, aim: any)
 end
 
 ---------------------------------------------------------------- public API
+
+-- Credits `attacker` for the next death of `humanoid` (death reports, §3.4),
+-- e.g. an execution by KnockService. Also combat-tags both players.
+function CombatService:RecordHit(humanoid: Humanoid, attacker: Player, actionId: string)
+	lastHitBy[humanoid] = { userId = attacker.UserId, actionId = actionId, at = os.clock() }
+	setTag(attacker)
+	local victim = humanoid.Parent and Players:GetPlayerFromCharacter(humanoid.Parent)
+	if victim then
+		setTag(victim)
+	end
+end
 
 function CombatService:Equip(player: Player, variationId: any): (boolean, string?)
 	if not enabled then

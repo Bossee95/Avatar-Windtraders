@@ -61,6 +61,17 @@ local CombatSettings = {
 	},
 	DefenseRateLimit = 8,
 
+	-- Downed, carry and execution (GDD §6.7). V carries, B executes.
+	Knock = {
+		HealthLimit = 6, -- a character is downed here instead of dying
+		Duration = 7, -- seconds until they get up
+		ExtendOnDamage = 3, -- seconds added per hit while down, capped at Duration
+		GripDuration = 3, -- an execution takes this long and can be interrupted
+		DropImmunity = 1, -- seconds before a dropped character can be picked up again
+		SearchRadius = 7, -- studs to the downed character
+		RateLimit = 4,
+	},
+
 	-- Studio-only convenience: when there is no character record or no
 	-- ownership provider, grant every kit, variation and G ability so the
 	-- moveset can be tested. Never applies in a live server.

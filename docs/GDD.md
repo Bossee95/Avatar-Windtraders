@@ -518,6 +518,18 @@ Every character can defend regardless of weapon kit. Defensive actions are not p
 
 The Development Team tunes all numbers. Defensive actions must stay readable and counterable.
 
+## 6.7 Downed State, Carrying and Execution
+
+A character reduced to very low health is downed rather than killed.
+
+- A downed character collapses and cannot act. They get back up after a short time unless something else happens.
+- Taking damage while downed extends the time they stay down.
+- Another player can carry a downed character (V) to move them, for example to rescue an ally or take a prisoner. Being hit drops the carried character.
+- Another player can execute a downed character (B). An execution takes a few seconds, holds the executioner in place and is interrupted if they are hit.
+- An execution is how a character dies in combat. During an officially recognised PD event the death is then confirmed by the Moderation Team like any other (Section 3.4), with the executioner recorded.
+
+The Development Team tunes the timings. The Loreteam and Moderation Team may set event rules on when executions are appropriate.
+
 ---
 
 # 6A. Movement System

@@ -86,6 +86,28 @@ keep dodges counterable).
 The server tells the defender `CombatDefenseState` and everyone
 `CombatDefense(character, kind, extra)` for animations and VFX.
 
+## Downed, carry and execution (§6.7)
+
+Rules in `src/shared/Combat/KnockCore.luau` (specs in
+`tests/Specs/Combat/KnockCore.spec.luau`), wiring in
+`Server/Services/Combat/KnockService.luau`, input and ragdoll in
+`Client/Controllers/Combat/KnockController.luau`; numbers in
+`CombatSettings.Knock` (from the original Studio knock system).
+
+* Player characters (and NPC rigs tagged `Knockable`) never die from damage:
+  at `HealthLimit` they are downed (`character.Knocked = "Down"`) and get up
+  after `Duration`. Damage while down adds `ExtendOnDamage`, capped.
+* **V** carries the nearest downed character within `SearchRadius` (welded
+  to the carrier, who owns its physics). V again or any damage to the carrier
+  drops it. The recovery timer pauses while carried.
+* **B** starts an execution: the executioner is rooted for `GripDuration`;
+  damage or B again cancels it. When it completes the target dies and
+  `CombatService:RecordHit` credits the executioner, so the death report sent
+  to `DeathReviewService` names them (§3.4).
+* While downed, carrying or executing (`player.KnockAction`), CombatService
+  rejects attacks, blocks, dodges and weapon switching.
+* After a carry or grip ends the target can't be picked up for `DropImmunity`.
+
 ## Weapon models
 
 `CombatService` welds `ServerStorage.WeaponModels.<variationId>` (or
