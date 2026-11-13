@@ -65,7 +65,7 @@ item is gone, even mid-combat.
 
 * the active character is alive and has a kit for the weapon type
 * the variation exists and is owned
-* only one weapon is equipped (equipping replaces it)
+* only one weapon is equipped (equipping replaces it). The inventory also limits a character to carrying one weapon (GDD §5.3), so this is a backstop
 * no weapon or G-ability switching while combat-tagged, mid-action, stunned or
   dead; character switching is blocked while tagged (switch guard "Combat")
 * G abilities are assigned to the character
