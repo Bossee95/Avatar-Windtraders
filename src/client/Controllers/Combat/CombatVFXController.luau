@@ -125,12 +125,8 @@ function CombatVFXController:Start()
 	end)
 	Net.OnEvent("CombatDefense", function(character: Model, kind: string)
 		emit(character, Effects.Defense[kind])
-		if kind == "BlockStart" then
-			clearTint(character, "BlockTint")
-			tint(character, Effects.BlockTint, Effects.BlockTintTransparency, nil, "BlockTint")
-		elseif kind == "BlockEnd" or kind == "BlockBroken" or kind == "BlockBypassed" then
-			clearTint(character, "BlockTint")
-		elseif kind == "PerfectBlock" then
+		-- Only a perfect block glows; a normal block has no body tint.
+		if kind == "PerfectBlock" then
 			tint(character, Effects.PerfectBlockFlash, 0.2, Effects.PerfectBlockFlashTime)
 		end
 	end)

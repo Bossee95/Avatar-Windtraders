@@ -22,8 +22,7 @@ local Effects = {
 	HitFlashTime = 0.15,
 
 	-- Body tints (Highlights), from Bossee's reference clip.
-	BlockTint = Color3.fromRGB(60, 220, 210), -- steady while holding a block
-	BlockTintTransparency = 0.65,
+	-- Only a perfect block glows blue; holding a normal block has no tint.
 	PerfectBlockFlash = Color3.fromRGB(120, 255, 240), -- ~0.1 s on a perfect block
 	PerfectBlockFlashTime = 0.12,
 	GlowTransparency = 0.45, -- an action's `glow` colour (R's red), for the whole action

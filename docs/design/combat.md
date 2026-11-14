@@ -98,7 +98,7 @@ keep dodges counterable).
   land but don't stagger, knock back or interrupt), a red `glow`, and a
   `finalEffects` launch on the last hit; 7 s cooldown. Ranged Criticals keep
   their shapes and cooldowns but glow and guard-break too.
-* Blocking shows a steady teal tint; a perfect block flashes teal for 0.12 s
+* Only a perfect block glows: a 0.12 s blue flash. Holding a normal block has no body tint
   (`Config/Effects`).
 
 The server tells the defender `CombatDefenseState` and everyone
