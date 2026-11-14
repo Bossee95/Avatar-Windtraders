@@ -9,7 +9,7 @@
 	Controls (GDD §5.4):
 	  M1  basic attack / combo (hold to keep attacking)
 	  Z X C  kit abilities
-	  R / M2  Critical attack of the equipped variation
+	  R   Critical attack of the equipped variation (right-click does nothing)
 	  G   selected G ability
 
 	Animations come from Shared.Combat.Config.Animations. Placeholder ids
@@ -228,9 +228,6 @@ function CombatController:Start()
 					task.wait(M1_REPEAT_INTERVAL)
 				end
 			end)
-		elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
-			-- M2 also fires the Critical (R).
-			send("R")
 		else
 			local mapped = KEY_TO_INPUT[input.KeyCode]
 			if mapped then

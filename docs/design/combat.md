@@ -94,7 +94,7 @@ keep dodges counterable).
 * M1: a hit every ~0.28 s (windup 0.18-0.2 + recovery 0.08-0.1), 0.3 s
   `comboEndlag` after hit 4. Spear animations play faster (`animationSpeed`)
   to land on the shorter windups.
-* R / M2: melee Criticals are 4 hits 0.15 s apart with `hyperArmor` (hits
+* R (right-click is not bound): melee Criticals are 4 hits 0.15 s apart with `hyperArmor` (hits
   land but don't stagger, knock back or interrupt), a red `glow`, and a
   `finalEffects` launch on the last hit; 7 s cooldown. Ranged Criticals keep
   their shapes and cooldowns but glow and guard-break too.
