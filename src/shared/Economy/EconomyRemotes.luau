@@ -4,6 +4,7 @@
 
 	Payloads:
 		InventoryUpdated  S->C  { items = { {uid, itemId, quantity} } }
+		GetInventory      C->S  () -> { items = { {uid, itemId, quantity} } }
 
 		TradeRequest      C->S  targetUserId                 -> ok, reason
 		TradeRespond      C->S  tradeId, accept              -> ok, reason
@@ -27,6 +28,7 @@ return {
 		SatchelClose = true,
 	},
 	Functions = {
+		GetInventory = true,
 		TradeRequest = true,
 		TradeRespond = true,
 		TradeSetOffer = true,

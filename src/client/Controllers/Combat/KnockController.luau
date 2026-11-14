@@ -18,6 +18,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Net = require(Shared.Net)
+local UIState = require(script.Parent.Parent.Parent.UIState)
 
 local LocalPlayer = Players.LocalPlayer
 local CARRY_KEY = Enum.KeyCode.V
@@ -177,7 +178,7 @@ function KnockController:Start()
 		task.spawn(watch, LocalPlayer.Character)
 	end
 	UserInputService.InputBegan:Connect(function(input, processed)
-		if processed then
+		if processed or UIState.IsMenuOpen() then
 			return
 		end
 		if input.KeyCode == CARRY_KEY then

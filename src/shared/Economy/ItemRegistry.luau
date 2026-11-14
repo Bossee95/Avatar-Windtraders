@@ -19,6 +19,9 @@
 		maxStack     number?  cap for stackable items (default 999)
 		variationId  string?  Weapon items only: the combat weapon variation this item
 		                      lets the character equip (Shared.Combat.Config.Variations key)
+		icon         string?  image asset for the inventory tile, e.g. "rbxassetid://123".
+		                      Without one the inventory draws a placeholder icon.
+		iconColor    {r,g,b}? tint for the drawn placeholder icon
 ]]
 
 local ItemRegistry = {}
@@ -45,10 +48,22 @@ local function validate(def)
 	if def.category == "WeaponSkin" then
 		error(("item %s: weapon skins belong in SkinStore, not the item registry"):format(def.id))
 	end
-	assert(ItemRegistry.Categories[def.category] ~= nil, ("item %s has unknown category %s"):format(def.id, tostring(def.category)))
+	assert(
+		ItemRegistry.Categories[def.category] ~= nil,
+		("item %s has unknown category %s"):format(def.id, tostring(def.category))
+	)
 	if def.variationId ~= nil then
 		assert(def.category == "Weapon", ("item %s: only weapons can have a variationId"):format(def.id))
 		assert(type(def.variationId) == "string", ("item %s: variationId must be a string"):format(def.id))
+	end
+	if def.icon ~= nil then
+		assert(type(def.icon) == "string", ("item %s: icon must be an asset id string"):format(def.id))
+	end
+	if def.iconColor ~= nil then
+		assert(
+			type(def.iconColor) == "table" and #def.iconColor == 3,
+			("item %s: iconColor must be { r, g, b }"):format(def.id)
+		)
 	end
 end
 
@@ -72,6 +87,8 @@ function ItemRegistry:Register(def)
 		stackable = def.stackable == true,
 		maxStack = def.stackable and (def.maxStack or DEFAULT_MAX_STACK) or 1,
 		variationId = def.variationId,
+		icon = def.icon,
+		iconColor = def.iconColor,
 	}
 end
 

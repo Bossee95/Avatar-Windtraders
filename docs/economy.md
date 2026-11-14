@@ -53,6 +53,21 @@ Final checks: both players are in the active PD, both still have the same living
 
 If a later hook fails, the rollback hook undoes all of this. A satchel can only be looted during its own PD, and only while that PD is not paused. When the PD ends, every satchel from it and all of its contents are removed and logged.
 
+## Inventory screen (client)
+
+Press **M** (gamepad: Back) or the *Inventory* button on the HUD. Code is in
+`src/client/Controllers/Economy/`:
+
+- `InventoryController` keeps the client's copy of carried items (`InventoryUpdated`, plus one `GetInventory` call on start).
+- `InventoryScreenController` builds the screen: five labelled category tabs (Weapons, Gear, Materials, Supplies, Keepsakes), a 5-wide grid of item tiles with stack counts, a detail panel (name, tags, description, stats) and a live 3D preview of the character that can be dragged to turn.
+- `InventoryUI/Theme` holds the colours and fonts, `InventoryUI/ItemIcons` draws placeholder icons from frames, `InventoryUI/CharacterPreview` runs the 3D preview.
+
+Weapons are class-locked, so the Weapons tab shows the class weapon marked *Class* with no equip button. If the class default weapon isn't an inventory item it is still listed.
+
+To give an item real art, add `icon = "rbxassetid://..."` to its entry in `ItemDefinitions` (optionally `iconColor = { r, g, b }` to tint the drawn placeholder instead).
+
+While the screen is open `UIState.IsMenuOpen()` is true and the combat, defense and knock controllers ignore keys, so Q/E switch tabs without dodging and WASD moves the selection instead of the character.
+
 ## Open decisions (GDD §19)
 
 | # | Flag(s) | Current default |

@@ -27,6 +27,7 @@ local Net = require(Shared.Net)
 local Signal = require(Shared.Util.Signal)
 local Animations = require(Shared.Combat.Config.Animations)
 local CombatSettings = require(Shared.Combat.Config.CombatSettings)
+local UIState = require(script.Parent.Parent.Parent.UIState)
 
 local LocalPlayer = Players.LocalPlayer
 local PLACEHOLDER_ID = "rbxassetid://0"
@@ -212,7 +213,7 @@ function DefenseController:Start()
 	end)
 
 	UserInputService.InputBegan:Connect(function(input, processed)
-		if processed then
+		if processed or UIState.IsMenuOpen() then
 			return
 		end
 		if input.KeyCode == BLOCK_KEY then

@@ -97,7 +97,13 @@ local function loadCharacter(player, characterId)
 	if weapons > EconomyConfig.MaxWeaponsPerCharacter then
 		-- Saved before the one-weapon rule. Nothing is deleted; the character just
 		-- cannot gain another weapon until it is down to the limit.
-		warn(("[Inventory] character %s carries %d weapons (limit %d)"):format(characterId, weapons, EconomyConfig.MaxWeaponsPerCharacter))
+		warn(
+			("[Inventory] character %s carries %d weapons (limit %d)"):format(
+				characterId,
+				weapons,
+				EconomyConfig.MaxWeaponsPerCharacter
+			)
+		)
 	end
 	loaded[characterId] = player
 	activeKey[player] = key
@@ -121,6 +127,12 @@ function InventoryService:Start()
 
 	local CharacterService = EconomyDeps.service("CharacterService")
 	local DataService = EconomyDeps.service("DataService")
+
+	-- The inventory screen asks once on start, in case the first push came
+	-- before it was listening.
+	Net.OnInvoke("GetInventory", function(player)
+		return { items = InventoryService:GetItems(player) }
+	end)
 
 	CharacterService.CharacterSelected:Connect(function(player, characterId)
 		loadCharacter(player, characterId)
