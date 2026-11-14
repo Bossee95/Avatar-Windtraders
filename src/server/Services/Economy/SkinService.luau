@@ -9,9 +9,17 @@
 	offline accounts too (via DataService:UpdateOffline).
 
 	There is no trade or transfer function, on purpose.
+
+	Equipping: the player picks one owned skin per weapon type (inventory, Customise
+	page). Choices are kept in the same section as `equipped = { [weaponType] = skinId }`.
+	A skin's look is ServerStorage.WeaponSkins.<skinId> (a BasePart, or a Model with a
+	PrimaryPart, set up like ServerStorage.WeaponModels). Give it a "WeaponType"
+	attribute (e.g. "Spear") to limit it to one weapon type and an optional
+	"DisplayName" attribute. CombatService welds it in place of the normal model.
 ]]
 
 local Players = game:GetService("Players")
+local ServerStorage = game:GetService("ServerStorage")
 
 local SkinStore = require(script.Parent.SkinStore)
 local EconomyDeps = require(script.Parent.EconomyDeps)
@@ -47,7 +55,77 @@ local function withOwned(userId, fn)
 end
 
 function SkinService:Init()
-	EconomyDeps.service("DataService"):RegisterSection(SECTION, { scope = "Account", default = { owned = {} } })
+	EconomyDeps.service("DataService")
+		:RegisterSection(SECTION, { scope = "Account", default = { owned = {}, equipped = {} } })
+end
+
+function SkinService:Start()
+	local CombatService = EconomyDeps.service("CombatService")
+	if CombatService and CombatService.SetWeaponSkinProvider then
+		CombatService:SetWeaponSkinProvider(function(player, _variationId, weaponType)
+			local skinId = SkinService:GetEquippedSkin(player, weaponType)
+			return skinId and SkinService:GetSkinModel(skinId)
+		end)
+	end
+end
+
+-- The model for a skin, or nil if the place has none yet.
+function SkinService:GetSkinModel(skinId)
+	local folder = ServerStorage:FindFirstChild("WeaponSkins")
+	return folder and folder:FindFirstChild(skinId) or nil
+end
+
+-- The weapon type a skin is for, or nil if it fits any weapon.
+function SkinService:GetSkinWeaponType(skinId)
+	local model = self:GetSkinModel(skinId)
+	local weaponType = model and model:GetAttribute("WeaponType")
+	return type(weaponType) == "string" and weaponType or nil
+end
+
+function SkinService:GetSkinDisplayName(skinId)
+	local model = self:GetSkinModel(skinId)
+	local name = model and model:GetAttribute("DisplayName")
+	return type(name) == "string" and name or skinId
+end
+
+function SkinService:GetEquippedSkin(player, weaponType)
+	local DataService = EconomyDeps.service("DataService")
+	local section = DataService and DataService:GetAccountSection(player, SECTION)
+	local skinId = section and section.equipped and section.equipped[weaponType]
+	if skinId and SkinStore.Owns(section.owned, skinId) then
+		return skinId
+	end
+	return nil
+end
+
+-- Wears an owned skin on a weapon type, or clears it with skinId = nil.
+-- Returns ok, err.
+function SkinService:EquipSkin(player, weaponType, skinId)
+	local DataService = EconomyDeps.service("DataService")
+	local section = DataService and DataService:GetAccountSection(player, SECTION)
+	if not section then
+		return false, "AccountNotLoaded"
+	end
+	if type(weaponType) ~= "string" or #weaponType > 50 then
+		return false, "InvalidWeaponType"
+	end
+	section.equipped = section.equipped or {}
+	if skinId == nil then
+		section.equipped[weaponType] = nil
+		return true
+	end
+	if not SkinStore.Owns(section.owned, skinId) then
+		return false, "NotOwned"
+	end
+	if not self:GetSkinModel(skinId) then
+		return false, "NoModel"
+	end
+	local skinType = self:GetSkinWeaponType(skinId)
+	if skinType and skinType ~= weaponType then
+		return false, "WrongWeaponType"
+	end
+	section.equipped[weaponType] = skinId
+	return true
 end
 
 -- Returns ok, err.

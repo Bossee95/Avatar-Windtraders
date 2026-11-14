@@ -29,6 +29,8 @@
 	  CombatService:TagCombat(player)               -- e.g. from other damage sources
 	  CombatService:Revalidate(player)              -- after kits/items change
 	  CombatService:SetVariationOwnershipProvider(fn(player, variationId) -> boolean)
+	  CombatService:SetWeaponSkinProvider(fn(player, variationId, weaponType) -> Instance?)
+	  CombatService:RefreshWeaponModel(player)       -- after the equipped skin changes
 	  CombatService:SetTargetFilter(fn(attacker: Player, targetModel: Model) -> boolean)
 	  CombatService:SetDamageHandler(fn(attacker: Player, humanoid, amount, actionId))
 	  CombatService.CombatTagChanged  Signal(player, isTagged)
@@ -91,6 +93,9 @@ local cooldowns = Cooldowns.new()
 local enabled = false
 
 local ownershipProvider: ((Player, string) -> boolean)? = nil
+-- Returns a skin model to weld instead of the normal weapon model (the
+-- inventory's Customise page sets skins through SkinService).
+local skinProvider: ((Player, string, string) -> Instance?)? = nil
 local targetFilter: ((Player, Model) -> boolean)? = nil
 local damageHandler: ((Player, Humanoid, number, string) -> ())? = nil
 
@@ -233,9 +238,21 @@ local function pushState(player: Player)
 	player:SetAttribute("CombatWeapon", state.variationId)
 	player:SetAttribute("CombatGAbility", state.gAbilityId)
 	player:SetAttribute("InCombat", tags:isTagged(player) or nil)
+	-- The G abilities this character holds, for the inventory's Skills page.
+	local owned = {}
+	local record = getRecord(player)
+	if record and record.abilities then
+		for abilityId in record.abilities do
+			if GAbilities[abilityId] then
+				table.insert(owned, abilityId)
+			end
+		end
+		table.sort(owned)
+	end
 	Net.Fire("CombatState", player, {
 		variationId = state.variationId,
 		gAbilityId = state.gAbilityId,
+		gAbilities = owned,
 		inCombat = tags:isTagged(player),
 		combatTagRemaining = tags:remaining(player),
 		cooldowns = cooldowns:snapshot(player),
@@ -358,7 +375,12 @@ local function attachWeaponModel(player: Player, state: PlayerState)
 	if not hand or not hand:IsA("BasePart") then
 		return
 	end
-	local template = findWeaponTemplate(state.variationId :: string, variation.weaponType)
+	local template = nil
+	if skinProvider then
+		local ok, skin = pcall(skinProvider, player, state.variationId :: string, variation.weaponType)
+		template = if ok then skin else nil
+	end
+	template = template or findWeaponTemplate(state.variationId :: string, variation.weaponType)
 	if template then
 		state.weaponPart = attachRealModel(template, hand, character, state.variationId :: string)
 		if state.weaponPart then
@@ -1118,6 +1140,18 @@ function CombatService:Revalidate(player: Player)
 	end
 end
 
+function CombatService:SetWeaponSkinProvider(fn: (Player, string, string) -> Instance?)
+	skinProvider = fn
+end
+
+-- Re-welds the weapon model, e.g. after the player picks a different skin.
+function CombatService:RefreshWeaponModel(player: Player)
+	local state = states[player]
+	if state and state.variationId then
+		attachWeaponModel(player, state)
+	end
+end
+
 function CombatService:SetVariationOwnershipProvider(fn: (Player, string) -> boolean)
 	ownershipProvider = fn
 	for player in states do
@@ -1297,6 +1331,10 @@ function CombatService:Start()
 		service.CharacterChanged:Connect(function(player: Player?, _userId, _characterId, field: string)
 			if player and (field == "Kits" or field == "Abilities" or field == "Status") then
 				CombatService:Revalidate(player)
+			end
+			if player and field == "Abilities" then
+				-- Keep the inventory's Skills page up to date.
+				pushState(player)
 			end
 		end)
 	else

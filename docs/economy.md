@@ -64,6 +64,17 @@ Press **M** (gamepad: Back) or the *Inventory* button on the HUD. Code is in
 
 Weapons are class-locked, so the Weapons tab shows the class weapon marked *Class* with no equip button. If the class default weapon isn't an inventory item it is still listed.
 
+### Pages (keys 1-4, gamepad LT / RT)
+
+The M screen has four pages across the top. The 3D preview stays on the right for all of them.
+
+1. **Inventory**: the item grid described above.
+2. **Customise** (`InventoryUI/Pages/CustomisePage`, server `Services/Cosmetics/CosmeticService`):
+   - *Weapon skins*: skins the account owns (SkinService). Click one to wear it on your class weapon, or *Default look* to go back. A skin's model is `ServerStorage.WeaponSkins.<skinId>` (set up like `WeaponModels`), with an optional `WeaponType` attribute to limit it to one weapon type and an optional `DisplayName`. The choice is saved per weapon type in the `Skins` account section (`equipped`), and CombatService welds it in place of the normal model.
+   - *Accessories*: every `Accessory` in `ServerStorage.CosmeticModels`, worn with `Humanoid:AddAccessory` and put back on every spawn. They're saved in the account-scope `Cosmetics` section, so they survive Permanent Death. Optional attributes are `DisplayName` and `Slot` (one per slot). The limit is `CosmeticConfig.MaxAccessories`.
+3. **Skills** (`Pages/SkillsPage`): the G abilities the character holds (now sent in `CombatState.gAbilities`). Click one to put it on G, or click the active one to clear G. This uses `CombatSelectGAbility`, so it can't be changed in combat.
+4. **Settings** (`Pages/SettingsPage`, `Controllers/SettingsController`, server `Services/SettingsService`): music volume, sound-effects volume, low graphics and show hitboxes. They're saved in the account-scope `Settings` section. The volumes drive `SoundService.Music` and `SoundService.SFX` SoundGroups, so music and effects need to play through those groups. Low graphics turns off shadows and post effects on this client. Show hitboxes draws your own attack areas briefly (`Combat/HitboxViewController`).
+
 To give an item real art, add `icon = "rbxassetid://..."` to its entry in `ItemDefinitions` (optionally `iconColor = { r, g, b }` to tint the drawn placeholder instead).
 
 While the screen is open `UIState.IsMenuOpen()` is true and the combat, defense and knock controllers ignore keys, so Q/E switch tabs without dodging and WASD moves the selection instead of the character.
