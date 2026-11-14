@@ -1,0 +1,223 @@
+--!strict
+--[[
+	CharacterPreview: a live 3D copy of the local character in a ViewportFrame,
+	so the inventory shows what the character is wearing and holding.
+
+	The copy is rebuilt with :Refresh() (on open and when the equipped weapon
+	changes). Drag with the mouse or a finger, or use the right thumbstick, to
+	turn it. It plays the character's own idle animation when one is found.
+]]
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+
+local Theme = require(script.Parent.Theme)
+
+local LocalPlayer = Players.LocalPlayer
+
+local DRAG_SPEED = 0.012 -- radians per pixel
+local FIELD_OF_VIEW = 28
+
+local STRIP_CLASSES = {
+	"Script",
+	"LocalScript",
+	"Sound",
+	"ForceField",
+	"BillboardGui",
+	"ProximityPrompt",
+	"ParticleEmitter",
+	"Trail",
+	"Beam",
+	"Highlight",
+}
+
+local CharacterPreview = {}
+CharacterPreview.__index = CharacterPreview
+
+export type CharacterPreview = typeof(setmetatable(
+	{} :: {
+		viewport: ViewportFrame,
+		world: WorldModel,
+		camera: Camera,
+		model: Model?,
+		basePivot: CFrame,
+		yaw: number,
+		dragging: boolean,
+		lastX: number,
+		connections: { RBXScriptConnection },
+	},
+	CharacterPreview
+))
+
+function CharacterPreview.new(parent: Instance): CharacterPreview
+	local viewport = Theme.make("ViewportFrame", {
+		Name = "CharacterPreview",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Ambient = Color3.fromRGB(110, 140, 150),
+		LightColor = Color3.fromRGB(220, 255, 250),
+		LightDirection = Vector3.new(-0.6, -1, -0.8),
+		Active = true,
+		ZIndex = 2,
+	}, parent)
+	local world = Theme.make("WorldModel", {}, viewport)
+	local camera = Theme.make("Camera", { FieldOfView = FIELD_OF_VIEW }, viewport)
+	viewport.CurrentCamera = camera
+
+	local self = setmetatable({
+		viewport = viewport,
+		world = world,
+		camera = camera,
+		model = nil,
+		basePivot = CFrame.identity,
+		yaw = 0,
+		dragging = false,
+		lastX = 0,
+		connections = {},
+	}, CharacterPreview)
+
+	table.insert(
+		self.connections,
+		viewport.InputBegan:Connect(function(input: InputObject)
+			if
+				input.UserInputType == Enum.UserInputType.MouseButton1
+				or input.UserInputType == Enum.UserInputType.Touch
+			then
+				self.dragging = true
+				self.lastX = input.Position.X
+			end
+		end)
+	)
+	table.insert(
+		self.connections,
+		UserInputService.InputChanged:Connect(function(input: InputObject)
+			if
+				self.dragging
+				and (
+					input.UserInputType == Enum.UserInputType.MouseMovement
+					or input.UserInputType == Enum.UserInputType.Touch
+				)
+			then
+				self:Rotate((input.Position.X - self.lastX) * DRAG_SPEED)
+				self.lastX = input.Position.X
+			end
+		end)
+	)
+	table.insert(
+		self.connections,
+		UserInputService.InputEnded:Connect(function(input: InputObject)
+			if
+				input.UserInputType == Enum.UserInputType.MouseButton1
+				or input.UserInputType == Enum.UserInputType.Touch
+			then
+				self.dragging = false
+			end
+		end)
+	)
+	return self
+end
+
+function CharacterPreview.Rotate(self: CharacterPreview, radians: number)
+	self.yaw += radians
+	local model = self.model
+	if model then
+		model:PivotTo(self.basePivot * CFrame.Angles(0, self.yaw, 0))
+	end
+end
+
+local function idleAnimationId(source: Model): string?
+	local animate = source:FindFirstChild("Animate")
+	local idle = animate and animate:FindFirstChild("idle")
+	if not idle then
+		return nil
+	end
+	for _, child in idle:GetChildren() do
+		if child:IsA("Animation") and child.AnimationId ~= "" then
+			return child.AnimationId
+		end
+	end
+	return nil
+end
+
+function CharacterPreview.Clear(self: CharacterPreview)
+	if self.model then
+		self.model:Destroy()
+		self.model = nil
+	end
+end
+
+-- Rebuilds the copy from the player's current character.
+function CharacterPreview.Refresh(self: CharacterPreview)
+	self:Clear()
+	local source = LocalPlayer.Character
+	if not source then
+		return
+	end
+
+	local wasArchivable = source.Archivable
+	source.Archivable = true
+	local ok, clone = pcall(function()
+		return source:Clone()
+	end)
+	source.Archivable = wasArchivable
+	if not ok or not clone then
+		return
+	end
+	local model = clone :: Model
+
+	for _, descendant in model:GetDescendants() do
+		for _, className in STRIP_CLASSES do
+			if descendant:IsA(className) then
+				descendant:Destroy()
+				break
+			end
+		end
+	end
+
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+		humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+	end
+	local root = model:FindFirstChild("HumanoidRootPart")
+	if root and root:IsA("BasePart") then
+		root.Anchored = true
+		model.PrimaryPart = root
+	end
+
+	model:PivotTo(CFrame.new())
+	model.Parent = self.world
+	self.model = model
+
+	-- Frame the whole body.
+	local boxCFrame, size = model:GetBoundingBox()
+	local center = boxCFrame.Position
+	local height = math.max(size.Y, size.X * 1.4, 4)
+	local distance = (height / 2) / math.tan(math.rad(FIELD_OF_VIEW / 2)) * 1.12
+	self.camera.CFrame = CFrame.lookAt(center + Vector3.new(0, 0.2, distance), center)
+	self.basePivot = model:GetPivot()
+	self:Rotate(0)
+
+	local animationId = idleAnimationId(source)
+	if humanoid and animationId then
+		local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator")
+		animator.Parent = humanoid
+		local animation = Instance.new("Animation")
+		animation.AnimationId = animationId
+		local loaded, track = pcall(function()
+			return (animator :: Animator):LoadAnimation(animation)
+		end)
+		if loaded and track then
+			track.Looped = true
+			track:Play(0)
+		end
+	end
+end
+
+-- Turns the copy back to face the camera (on open).
+function CharacterPreview.ResetRotation(self: CharacterPreview)
+	self.yaw = 0
+	self:Rotate(0)
+end
+
+return CharacterPreview

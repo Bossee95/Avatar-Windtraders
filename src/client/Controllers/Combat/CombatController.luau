@@ -41,6 +41,7 @@ local Animations = require(Shared.Combat.Config.Animations)
 local Actions = require(Shared.Combat.Config.Actions)
 local GAbilities = require(Shared.Combat.Config.GAbilities)
 local Push = require(Shared.Combat.Push)
+local UIState = require(script.Parent.Parent.Parent.UIState)
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -143,7 +144,7 @@ local function bindStudioDebugKeys()
 	local gIndex = 0
 
 	UserInputService.InputBegan:Connect(function(input, processed)
-		if processed then
+		if processed or UIState.IsMenuOpen() then
 			return
 		end
 		if input.KeyCode == Enum.KeyCode.Six and #gList > 0 then
@@ -190,7 +191,7 @@ function CombatController:Start()
 	end)
 
 	UserInputService.InputBegan:Connect(function(input, processed)
-		if processed then
+		if processed or UIState.IsMenuOpen() then
 			return
 		end
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
