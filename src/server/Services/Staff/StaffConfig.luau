@@ -29,7 +29,7 @@ return table.freeze({
 
 	-- [userId] = { roles }
 	UserRoles = table.freeze({
-		-- [123456789] = { "Owner" },
+		[126830207] = { "Owner" }, -- Bossee
 	}) :: { [number]: { string } },
 
 	Access = table.freeze({
