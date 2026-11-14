@@ -21,7 +21,7 @@
 
 	Public API for UI code:
 	  CombatController:SelectGAbility(abilityId?) -> (ok, err?)
-	  CombatController:GetState() -> { variationId?, gAbilityId?, inCombat, cooldowns }
+	  CombatController:GetState() -> { variationId?, gAbilityId?, gAbilities, inCombat, cooldowns }
 	  CombatController.StateChanged  Signal(state)
 	  CombatController.Notice        Signal(kind, ...)  -- rejections, forced unequips
 
@@ -63,6 +63,7 @@ CombatController.Notice = Signal.new()
 local state = {
 	variationId = nil :: string?,
 	gAbilityId = nil :: string?,
+	gAbilities = {} :: { string }, -- G abilities this character holds
 	inCombat = false,
 	cooldowns = {} :: { [string]: number },
 }
@@ -159,6 +160,7 @@ function CombatController:Start()
 	Net.OnEvent("CombatState", function(newState)
 		state.variationId = newState.variationId
 		state.gAbilityId = newState.gAbilityId
+		state.gAbilities = if type(newState.gAbilities) == "table" then newState.gAbilities else {}
 		state.inCombat = newState.inCombat == true
 		state.cooldowns = newState.cooldowns or {}
 		CombatController.StateChanged:Fire(CombatController:GetState())
