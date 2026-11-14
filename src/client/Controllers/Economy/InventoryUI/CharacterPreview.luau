@@ -17,6 +17,7 @@ local LocalPlayer = Players.LocalPlayer
 
 local DRAG_SPEED = 0.012 -- radians per pixel
 local FIELD_OF_VIEW = 28
+local FRAME_MARGIN = 1.25 -- 25% breathing room around the body
 
 local STRIP_CLASSES = {
 	"Script",
@@ -139,6 +140,44 @@ local function idleAnimationId(source: Model): string?
 	return nil
 end
 
+-- Moves the camera back until the whole body, head to feet, fits the
+-- viewport with a margin, checking both height and width (the preview is
+-- tall and narrow, so a wide weapon can be the limit).
+function CharacterPreview.Frame(self: CharacterPreview)
+	local model = self.model
+	if not model then
+		return
+	end
+	local pivot = model:GetPivot().Position
+	local bottom, top, halfWidth = math.huge, -math.huge, 1
+	for _, part in model:GetDescendants() do
+		if part:IsA("BasePart") then
+			local cf, size = part.CFrame, part.Size
+			local half = (cf.RightVector * size.X / 2):Abs()
+				+ (cf.UpVector * size.Y / 2):Abs()
+				+ (cf.LookVector * size.Z / 2):Abs()
+			bottom = math.min(bottom, cf.Position.Y - half.Y)
+			top = math.max(top, cf.Position.Y + half.Y)
+			local offset = cf.Position - pivot
+			-- The copy turns, so use the larger of the X and Z reach.
+			halfWidth = math.max(halfWidth, math.abs(offset.X) + half.X, math.abs(offset.Z) + half.Z)
+		end
+	end
+	if bottom == math.huge then
+		return
+	end
+	local height = math.max(top - bottom, 2)
+	local absolute = self.viewport.AbsoluteSize
+	local aspect = if absolute.X > 0 and absolute.Y > 0 then absolute.X / absolute.Y else 0.5
+	local tanV = math.tan(math.rad(FIELD_OF_VIEW / 2))
+	local tanH = tanV * aspect
+	local fitHeight = (height / 2) / tanV
+	local fitWidth = halfWidth / tanH + halfWidth
+	local distance = math.max(fitHeight, fitWidth) * FRAME_MARGIN
+	local target = Vector3.new(pivot.X, (top + bottom) / 2, pivot.Z)
+	self.camera.CFrame = CFrame.lookAt(target + Vector3.new(0, 0, distance), target)
+end
+
 function CharacterPreview.Clear(self: CharacterPreview)
 	if self.model then
 		self.model:Destroy()
@@ -189,12 +228,7 @@ function CharacterPreview.Refresh(self: CharacterPreview)
 	model.Parent = self.world
 	self.model = model
 
-	-- Frame the whole body.
-	local boxCFrame, size = model:GetBoundingBox()
-	local center = boxCFrame.Position
-	local height = math.max(size.Y, size.X * 1.4, 4)
-	local distance = (height / 2) / math.tan(math.rad(FIELD_OF_VIEW / 2)) * 1.12
-	self.camera.CFrame = CFrame.lookAt(center + Vector3.new(0, 0.2, distance), center)
+	self:Frame()
 	self.basePivot = model:GetPivot()
 	self:Rotate(0)
 

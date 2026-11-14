@@ -1282,10 +1282,11 @@ function InventoryScreenController:Open()
 	updateScale()
 	renderAll()
 	renderFooter()
-	preview:Refresh()
-	preview:ResetRotation()
 
 	gui.Enabled = true
+	-- After enabling, so the viewport has its real size for framing.
+	preview:Refresh()
+	preview:ResetRotation()
 	launcher.Enabled = false
 	backdrop.BackgroundTransparency = 1
 	root.Position = UDim2.new(0.5, 0, 0.5, 24)
