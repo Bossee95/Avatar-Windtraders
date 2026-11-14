@@ -17,7 +17,11 @@ local LocalPlayer = Players.LocalPlayer
 
 local DRAG_SPEED = 0.012 -- radians per pixel
 local FIELD_OF_VIEW = 28
-local FRAME_MARGIN = 1.25 -- 25% breathing room around the body
+local HEIGHT_MARGIN = 1.15 -- room above the head and below the feet
+local WIDTH_MARGIN = 1.1 -- room beside the arms
+-- The weapon the server welds to the hand. It is left out of the framing:
+-- a spear lying along Z would otherwise push the camera far back.
+local WEAPON_NAME = "EquippedWeapon"
 
 local STRIP_CLASSES = {
 	"Script",
@@ -140,9 +144,9 @@ local function idleAnimationId(source: Model): string?
 	return nil
 end
 
--- Moves the camera back until the whole body, head to feet, fits the
--- viewport with a margin, checking both height and width (the preview is
--- tall and narrow, so a wide weapon can be the limit).
+-- Moves the camera back until the body, head to feet and arm to arm, fits
+-- the viewport with a small margin. Only the body counts: the held weapon
+-- (and any tool) is ignored, so a long spear can't shrink the character.
 function CharacterPreview.Frame(self: CharacterPreview)
 	local model = self.model
 	if not model then
@@ -151,7 +155,10 @@ function CharacterPreview.Frame(self: CharacterPreview)
 	local pivot = model:GetPivot().Position
 	local bottom, top, halfWidth = math.huge, -math.huge, 1
 	for _, part in model:GetDescendants() do
-		if part:IsA("BasePart") then
+		local isWeapon = part.Name == WEAPON_NAME
+			or part:FindFirstAncestor(WEAPON_NAME) ~= nil
+			or part:FindFirstAncestorOfClass("Tool") ~= nil
+		if part:IsA("BasePart") and not isWeapon then
 			local cf, size = part.CFrame, part.Size
 			local half = (cf.RightVector * size.X / 2):Abs()
 				+ (cf.UpVector * size.Y / 2):Abs()
@@ -171,9 +178,9 @@ function CharacterPreview.Frame(self: CharacterPreview)
 	local aspect = if absolute.X > 0 and absolute.Y > 0 then absolute.X / absolute.Y else 0.5
 	local tanV = math.tan(math.rad(FIELD_OF_VIEW / 2))
 	local tanH = tanV * aspect
-	local fitHeight = (height / 2) / tanV
-	local fitWidth = halfWidth / tanH + halfWidth
-	local distance = math.max(fitHeight, fitWidth) * FRAME_MARGIN
+	local fitHeight = (height / 2) / tanV * HEIGHT_MARGIN
+	local fitWidth = halfWidth / tanH * WIDTH_MARGIN
+	local distance = math.max(fitHeight, fitWidth)
 	local target = Vector3.new(pivot.X, (top + bottom) / 2, pivot.Z)
 	self.camera.CFrame = CFrame.lookAt(target + Vector3.new(0, 0, distance), target)
 end
