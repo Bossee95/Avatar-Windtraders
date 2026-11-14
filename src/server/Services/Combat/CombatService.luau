@@ -19,8 +19,10 @@
 	unequips straight away when a kit or weapon item is lost.
 
 	Public API (colon calls, as with every service):
-	  CombatService:Equip(player, variationId) -> (ok, err?)
+	  CombatService:Equip(player, variationId) -> (ok, err?)   -- must match the class
 	  CombatService:Unequip(player) -> (ok, err?)
+	  CombatService:GetClass(player) -> classId
+	  CombatService:SetClass(userId, characterId?, classId) -> (ok, err?)
 	  CombatService:SelectGAbility(player, abilityId?) -> (ok, err?)
 	  CombatService:GetEquipped(player) -> { variationId, weaponType }?
 	  CombatService:IsInCombat(player) -> boolean
@@ -52,6 +54,7 @@ local Kits = require(CombatShared.Config.Kits)
 local Variations = require(CombatShared.Config.Variations)
 local WeaponTypes = require(CombatShared.Config.WeaponTypes)
 local GAbilities = require(CombatShared.Config.GAbilities)
+local Classes = require(CombatShared.Config.Classes)
 local CombatSettings = require(CombatShared.Config.CombatSettings)
 
 local Defense = require(CombatShared.Defense)
@@ -112,6 +115,11 @@ local function structureOf(part: BasePart): Model?
 	return nil
 end
 local DeathReviewService: any = nil
+local DataService: any = nil
+
+-- Character-scope section holding the combat class (wiped by Permanent
+-- Death, like the rest of the character).
+local SECTION = "Combat"
 
 -- Who last hit each player's humanoid, for death reports.
 local KILL_CREDIT_WINDOW = 10
@@ -123,6 +131,9 @@ local lastHitBy: { [Humanoid]: { userId: number, actionId: string, at: number } 
 local IS_STUDIO = RunService:IsStudio()
 
 ---------------------------------------------------------------- helpers
+
+local autoEquip: (Player) -> ()
+local registerClassCommand: () -> ()
 
 local function studioGrantAll(): boolean
 	return IS_STUDIO and CombatSettings.StudioGrantAll
@@ -931,6 +942,71 @@ function CombatService:RecordHit(humanoid: Humanoid, attacker: Player, actionId:
 	end
 end
 
+---------------------------------------------------------------- classes
+
+function CombatService:GetClass(player: Player): string
+	local section = DataService and DataService:GetCharacterSection(player, SECTION)
+	return CombatRules.resolveClass(section and section.class)
+end
+
+-- Equips the class's weapon (an owned variation of its type, else the
+-- class default). The class decides the weapon, not the player, so this
+-- is not a "switch" and ignores the combat-tag switching rule.
+autoEquip = function(player: Player)
+	local record = getRecord(player)
+	local humanoid = getHumanoid(player)
+	if not enabled or not record or not humanoid or humanoid.Health <= 0 then
+		return
+	end
+	local classId = CombatService:GetClass(player)
+	local variationId = CombatRules.pickClassWeapon(classId, function(id)
+		return ownsVariation(player, id)
+	end)
+	if not variationId then
+		return
+	end
+	local variation = Variations[variationId]
+	if not CombatRules.getKitLevel(record, variation.weaponType) then
+		return -- no kit for the class weapon yet: the Loreteam has to grant it
+	end
+	local state = getState(player)
+	if state.variationId == variationId then
+		return
+	end
+	state.variationId = variationId
+	resetActionState(state)
+	attachWeaponModel(player, state)
+	pushState(player)
+end
+
+-- Sets a character's class (staff only; callers check permissions). Works
+-- for online and offline accounts. An online player is re-armed at once.
+function CombatService:SetClass(userId: number, characterId: string?, classId: string): (boolean, string?)
+	if not Classes[classId] then
+		return false, "UnknownClass"
+	end
+	if not DataService then
+		return false, "NoDataService"
+	end
+	local ok, err = DataService:UpdateOffline(userId, function(account)
+		local id = characterId or account.activeCharacterId
+		local character = id and account.characters[id]
+		if not character then
+			error("NoCharacter")
+		end
+		character.sections[SECTION] = character.sections[SECTION] or {}
+		character.sections[SECTION].class = classId
+	end)
+	if not ok then
+		return false, err
+	end
+	local player = Players:GetPlayerByUserId(userId)
+	if player then
+		CombatService:Revalidate(player)
+	end
+	return true, nil
+end
+
 function CombatService:Equip(player: Player, variationId: any): (boolean, string?)
 	if not enabled then
 		return false, "CombatDisabled"
@@ -943,7 +1019,14 @@ function CombatService:Equip(player: Player, variationId: any): (boolean, string
 	local owns = type(variationId) == "string"
 		and Variations[variationId] ~= nil
 		and ownsVariation(player, variationId)
-	local ok, err = CombatRules.canEquip(record, variationId, owns, rulesState(player), state.variationId)
+	local ok, err = CombatRules.canEquip(
+		record,
+		variationId,
+		owns,
+		rulesState(player),
+		state.variationId,
+		CombatService:GetClass(player)
+	)
 	if not ok then
 		return false, err
 	end
@@ -1015,9 +1098,18 @@ function CombatService:Revalidate(player: Player)
 			forceUnequip(player, "NoCharacter")
 		elseif not CombatRules.getKitLevel(record, variation.weaponType) then
 			forceUnequip(player, "KitNotAssigned")
-		elseif not ownsVariation(player, state.variationId) then
+		elseif variation.weaponType ~= CombatRules.classWeaponType(CombatService:GetClass(player)) then
+			forceUnequip(player, "WrongClass")
+		elseif
+			not ownsVariation(player, state.variationId)
+			and state.variationId ~= Classes[CombatService:GetClass(player)].defaultVariation
+		then
 			forceUnequip(player, "NotOwned")
 		end
+	end
+	-- Class-locked: whenever nothing is equipped, wield the class weapon.
+	if record and not state.variationId then
+		autoEquip(player)
 	end
 	if state.gAbilityId and not CombatRules.hasGAbility(record, state.gAbilityId) then
 		state.gAbilityId = nil
@@ -1084,6 +1176,41 @@ end
 
 ---------------------------------------------------------------- lifecycle
 
+-- /class <player> <classId> [char=<id>], for staff who can assign kits.
+registerClassCommand = function()
+	local okCmd, commands = pcall(Loader.Get, "StaffCommandService")
+	local okTargets, StaffTargets = pcall(function()
+		return require(script.Parent.Parent.Staff.StaffTargets)
+	end)
+	if not okCmd or not commands or not commands.RegisterCommand or not okTargets then
+		return
+	end
+	local names = {}
+	for id in Classes do
+		table.insert(names, id)
+	end
+	table.sort(names)
+	commands:RegisterCommand("/class", {
+		usage = { "/class <player> <classId> [char=<id>]   classes: " .. table.concat(names, ", ") },
+		permissions = { "AssignKits" },
+		run = function(_player, args, opts)
+			local userId, err = StaffTargets.ResolveUserId(args[1] or "")
+			if not userId then
+				return err or "Usage: /class <player> <classId>"
+			end
+			local classId = args[2]
+			if not classId or not Classes[classId] then
+				return "Unknown class. Classes: " .. table.concat(names, ", ")
+			end
+			local ok, e = CombatService:SetClass(userId, opts and opts.char, classId)
+			if not ok then
+				return "Failed: " .. tostring(e)
+			end
+			return `Class set to {Classes[classId].displayName}.`
+		end,
+	})
+end
+
 function CombatService:Init()
 	local problems = ConfigValidator.validate()
 	if #problems > 0 then
@@ -1095,6 +1222,13 @@ function CombatService:Init()
 	else
 		enabled = true
 	end
+	local okData, data = pcall(Loader.Get, "DataService")
+	if okData and data then
+		DataService = data
+		data:RegisterSection(SECTION, { scope = "Character", default = { class = nil } })
+	end
+	registerClassCommand()
+
 	-- Let core reject unknown weapon types and G ability ids at grant time.
 	local okProg, progression = pcall(Loader.Get, "ProgressionService")
 	if okProg and progression then
@@ -1134,12 +1268,8 @@ function CombatService:Init()
 			return typeof(direction) == "Vector3"
 		end,
 	})
-	Net.OnInvoke("CombatEquip", function(player, variationId)
-		return CombatService:Equip(player, variationId)
-	end, { rateLimit = CombatSettings.EquipRateLimit, validate = isString })
-	Net.OnInvoke("CombatUnequip", function(player)
-		return CombatService:Unequip(player)
-	end, { rateLimit = CombatSettings.EquipRateLimit })
+	-- No equip/unequip remotes: a class locks the character to one weapon,
+	-- which the server equips on spawn (see autoEquip).
 	Net.OnInvoke("CombatSelectGAbility", function(player, abilityId)
 		return CombatService:SelectGAbility(player, abilityId)
 	end, {
@@ -1235,6 +1365,9 @@ function CombatService:Start()
 			CombatService:Revalidate(player)
 			local humanoid = avatar:WaitForChild("Humanoid", 10)
 			if humanoid and humanoid:IsA("Humanoid") then
+				-- The class weapon needs a living humanoid, which may not have
+				-- existed when the avatar was first added.
+				CombatService:Revalidate(player)
 				humanoid.Died:Once(function()
 					onDied(player, humanoid)
 				end)

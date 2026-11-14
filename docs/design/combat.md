@@ -151,13 +151,30 @@ plain placeholder readout of block and dodge charges and the downed timer.
 a PrimaryPart. An Attachment named `Grip` inside is lined up with the hand's
 `RightGripAttachment`. Without a model it falls back to the placeholder part.
 
+## Classes (GDD §5.2, §5.3)
+
+Each class in `Config/Classes.luau` locks a character to one weapon type:
+Lancer → Spear, Swordsman → Sword, Archer → Bow, Marksman → Rifle. The class is
+stored per character in the `Combat` character section (wiped on Permanent
+Death) and defaults to `CombatSettings.DefaultClass` (Lancer).
+
+On spawn, and whenever `Revalidate` runs, the server equips the class weapon:
+the first owned variation of the class weapon type, else the class's
+`defaultVariation`. It needs a kit for that type, so a character with no kit
+has no weapon until the Loreteam grants one. There is no client equip remote
+and no weapon hotkeys.
+
+Staff set a class with `/class <player> <classId> [char=<id>]` (permission
+`AssignKits`), which calls `CombatService:SetClass` and re-equips at once.
+
 ## Server validation (§16.5)
 
 `CombatService` checks, per request:
 
 * the active character is alive and has a kit for the weapon type
 * the variation exists and is owned
-* only one weapon is equipped (equipping replaces it). The inventory also limits a character to carrying one weapon (GDD §5.3), so this is a backstop
+* the weapon matches the character's class (`Config/Classes.luau`, GDD §5.2).
+  A Lancer can only hold a spear. Only one weapon is ever equipped
 * no weapon or G-ability switching while combat-tagged, mid-action, stunned or
   dead; character switching is blocked while tagged (switch guard "Combat")
 * G abilities are assigned to the character
@@ -172,8 +189,10 @@ placeholder for §19.5).
 ## Integration points
 
 ```lua
-CombatService:Equip(player, variationId) -> (ok, err?)
+CombatService:Equip(player, variationId) -> (ok, err?)   -- server only, class-checked
 CombatService:Unequip(player) -> (ok, err?)
+CombatService:GetClass(player) -> classId
+CombatService:SetClass(userId, characterId?, classId) -> (ok, err?)
 CombatService:SelectGAbility(player, abilityId?) -> (ok, err?)
 CombatService:GetEquipped(player) -> { variationId, weaponType }?
 CombatService:IsInCombat(player) -> boolean
@@ -198,8 +217,6 @@ Declared in `src/shared/Combat/CombatRemotes.luau` (merged by `Shared.Net`):
 | Name | Kind | Direction | Payload |
 |---|---|---|---|
 | `CombatUseAction` | Event | client → server | `input` ("M1"/"Z"/"X"/"C"/"R"/"G"), `aim: Vector3?` |
-| `CombatEquip` | Function | client → server | `variationId` → `(ok, err)` |
-| `CombatUnequip` | Function | client → server | → `(ok, err)` |
 | `CombatSelectGAbility` | Function | client → server | `abilityId?` → `(ok, err)` |
 | `CombatState` | Event | server → client | `{ variationId, gAbilityId, inCombat, combatTagRemaining, cooldowns }` |
 | `CombatActionStarted` | Event | server → all | `character, actionId, input` |
@@ -211,8 +228,8 @@ Declared in `src/shared/Combat/CombatRemotes.luau` (merged by `Shared.Net`):
 
 `CombatSettings.StudioGrantAll` (on by default, Studio only) grants every kit at
 its top level, every variation and every G ability, so the moveset can be tried
-without staff tools. Keys 1 to 4 equip Sword/Spear/Bow/Rifle, 5 unequips, 6
-cycles the G ability. Set it to `false` to test real permissions.
+without staff tools. You still only get your class weapon (Lancer by default);
+use `/class` to try another class. Key 6 cycles the G ability. Set it to `false` to test real permissions.
 
 Specs in `tests/Specs/Combat` cover the rules, combat tag, cooldowns and config
 validation.

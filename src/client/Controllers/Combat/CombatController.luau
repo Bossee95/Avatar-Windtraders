@@ -15,17 +15,18 @@
 	Animations come from Shared.Combat.Config.Animations. Placeholder ids
 	(rbxassetid://0) are skipped, so combat works before animations exist.
 
-	Public API for UI code (inventory / hotbar):
-	  CombatController:Equip(variationId) -> (ok, err?)
-	  CombatController:Unequip() -> (ok, err?)
+	Weapons are class-locked (Shared.Combat.Config.Classes): the server
+	equips your class weapon on spawn, and there is no client equip or
+	weapon swap. A Lancer only ever holds their spear.
+
+	Public API for UI code:
 	  CombatController:SelectGAbility(abilityId?) -> (ok, err?)
 	  CombatController:GetState() -> { variationId?, gAbilityId?, inCombat, cooldowns }
 	  CombatController.StateChanged  Signal(state)
 	  CombatController.Notice        Signal(kind, ...)  -- rejections, forced unequips
 
-	Studio only: keys 1-4 equip the first variation of each weapon type,
-	5 unequips, 6 cycles G abilities. These bindings do not exist in a live
-	server.
+	Studio only: key 6 cycles G abilities. This binding does not exist in a
+	live server.
 ]]
 
 local Players = game:GetService("Players")
@@ -38,7 +39,6 @@ local Net = require(Shared.Net)
 local Signal = require(Shared.Util.Signal)
 local Animations = require(Shared.Combat.Config.Animations)
 local Actions = require(Shared.Combat.Config.Actions)
-local Variations = require(Shared.Combat.Config.Variations)
 local GAbilities = require(Shared.Combat.Config.GAbilities)
 local Push = require(Shared.Combat.Push)
 
@@ -126,14 +126,6 @@ local function send(input: string)
 	Net.Fire("CombatUseAction", input, getAim())
 end
 
-function CombatController:Equip(variationId: string): (boolean, string?)
-	return Net.Invoke("CombatEquip", variationId)
-end
-
-function CombatController:Unequip(): (boolean, string?)
-	return Net.Invoke("CombatUnequip")
-end
-
 function CombatController:SelectGAbility(abilityId: string?): (boolean, string?)
 	return Net.Invoke("CombatSelectGAbility", abilityId)
 end
@@ -143,15 +135,6 @@ function CombatController:GetState()
 end
 
 local function bindStudioDebugKeys()
-	local firstOfType: { [string]: string } = {}
-	for id, variation in Variations do
-		local current = firstOfType[variation.weaponType]
-		if not current or id < current then
-			firstOfType[variation.weaponType] = id
-		end
-	end
-	local order = { "Sword", "Spear", "Bow", "Rifle" }
-	local keys = { Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four }
 	local gList = {}
 	for id in GAbilities do
 		table.insert(gList, id)
@@ -163,19 +146,12 @@ local function bindStudioDebugKeys()
 		if processed then
 			return
 		end
-		for i, key in keys do
-			if input.KeyCode == key and firstOfType[order[i]] then
-				print("[Combat] equip", firstOfType[order[i]], CombatController:Equip(firstOfType[order[i]]))
-			end
-		end
-		if input.KeyCode == Enum.KeyCode.Five then
-			print("[Combat] unequip", CombatController:Unequip())
-		elseif input.KeyCode == Enum.KeyCode.Six and #gList > 0 then
+		if input.KeyCode == Enum.KeyCode.Six and #gList > 0 then
 			gIndex = gIndex % #gList + 1
 			print("[Combat] select G", gList[gIndex], CombatController:SelectGAbility(gList[gIndex]))
 		end
 	end)
-	print("[Combat] Studio keys: 1-4 equip Sword/Spear/Bow/Rifle, 5 unequip, 6 cycle G ability")
+	print("[Combat] Studio key: 6 cycles G ability")
 end
 
 function CombatController:Start()

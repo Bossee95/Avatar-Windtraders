@@ -10,6 +10,10 @@ local CombatSettings = {
 	-- G ability, or switch character (GDD §5.3, §19.5).
 	CombatTagDuration = 20,
 
+	-- Class a character has until staff set one (Config/Classes). A class
+	-- locks the character to its single weapon.
+	DefaultClass = "Lancer",
+
 	-- Which states block weapon switching (§19.5). Set any to false to allow
 	-- switching in that state.
 	SwitchBlockedWhen = {

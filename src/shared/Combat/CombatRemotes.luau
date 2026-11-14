@@ -17,8 +17,6 @@ return {
 		CombatDefense = true, -- server -> all: character, kind ("BlockStart"/"BlockEnd"/"Blocked"/"PerfectBlock"/"BlockBroken"/"Dodge"/"Dodged"), extra?
 	},
 	Functions = {
-		CombatEquip = true, -- variationId -> (ok, err)
-		CombatUnequip = true, -- () -> (ok, err)
 		CombatSelectGAbility = true, -- abilityId? -> (ok, err)
 	},
 }

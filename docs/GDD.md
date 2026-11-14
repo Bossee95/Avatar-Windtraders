@@ -289,11 +289,11 @@ Faction rank represents a character's overall standing within their faction.
 
 There is one overall progression structure rather than separate ranks for individual weapon types.
 
-For example, a Level 3 Warrior may qualify to use both a Level 3 sword kit and a Level 3 spear kit.
+For example, a Level 3 Warrior Lancer holds a Level 3 spear kit because their overall Warrior rank is Level 3.
 
-They do not possess separate sword and spear ranks.
+They do not possess a separate spear rank.
 
-Their overall Warrior rank determines their eligibility for the weapon kits they may receive.
+Their overall Warrior rank determines the level of the weapon kit they may receive for their class (see 5.2).
 
 ## 4.4 Loreteam Authority
 
@@ -338,37 +338,36 @@ A weapon kit determines the standard combat moveset available to a player when u
 
 Weapon kits are assigned according to the player's overall faction rank and completed Trial progression.
 
-## 5.2 Weapon Kit Eligibility
+## 5.2 Classes and Weapon Kit Eligibility
 
-Players may eventually qualify for multiple weapon types.
+Every character has a combat class. The class locks the character to one weapon type.
 
-However, access to additional weapon types requires completing the relevant sequential Trials and receiving Loreteam approval.
+| Class | Weapon |
+|---|---|
+| Lancer | Spear |
+| Swordsman | Sword |
+| Archer | Bow |
+| Marksman | Rifle |
 
-A player may therefore possess multiple approved weapon kits at the same overall faction rank.
+A Lancer can only use their spear. They cannot pick up, equip or switch to a sword, bow or rifle.
 
-For example:
+The class's weapon kit level follows the character's overall faction rank. For example, a Level 3 Warrior Lancer holds a Level 3 Spear Kit.
 
-A Level 3 Warrior may have:
+The Loreteam assigns a character's class and kit. Changing class is a Loreteam decision, not something a player can do in game.
 
-- Level 3 Sword Kit.
-- Level 3 Spear Kit.
-- Level 3 Bow Kit.
-
-These are different weapon kits, not separate progression ranks.
-
-The Loreteam determines which kits are approved and assigns them to the player.
+The class list and its weapon types are data-driven so the Development Team can add classes later.
 
 ## 5.3 Weapon Allocation and Equipping
 
-Only one weapon (tool) can be allocated to a character at a time.
+Only one weapon (tool) can be allocated to a character at a time, and it is always their class weapon.
 
-Holding approved kits for several weapon types does not allow a character to carry several weapons. The character must exchange their allocated weapon to use a different one.
+The game equips the class weapon automatically when the character spawns. There are no weapon hotkeys, hotbar slots or quick-swapping between weapons.
 
-Players must switch weapons outside combat.
+A character may own more than one variation of their class weapon (for example two spear variations). Changing variation happens outside combat only.
 
-Weapon switching is prohibited during active engagements to prevent players from changing their combat moveset to gain an immediate advantage.
+Weapon and variation changes are prohibited during active engagements to prevent players from changing their combat moveset to gain an immediate advantage.
 
-The game should enforce both restrictions: the one-weapon allocation through the inventory and equipping systems, and the switching restriction through combat-state checks.
+The game enforces these rules on the server: the class lock through the equipping system, and the switching restriction through combat-state checks.
 
 ## 5.4 Weapon Kit Structure
 

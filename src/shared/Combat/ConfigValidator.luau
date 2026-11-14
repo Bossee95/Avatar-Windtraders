@@ -14,6 +14,8 @@ local GAbilities = require(Config.GAbilities)
 local Kits = require(Config.Kits)
 local Variations = require(Config.Variations)
 local WeaponTypes = require(Config.WeaponTypes)
+local Classes = require(Config.Classes)
+local CombatSettings = require(Config.CombatSettings)
 
 local SHAPE_FIELDS = {
 	Box = { "range", "width", "height" },
@@ -151,6 +153,24 @@ function ConfigValidator.validate(): { string }
 				table.insert(problems, `GAbilities.{id}: unknown weapon type "{weaponType}"`)
 			end
 		end
+	end
+
+	for id, class in Classes do
+		if not WeaponTypes[class.weaponType] then
+			table.insert(problems, `Classes.{id}: unknown weapon type "{class.weaponType}"`)
+		end
+		local default = Variations[class.defaultVariation]
+		if not default then
+			table.insert(problems, `Classes.{id}: unknown defaultVariation "{class.defaultVariation}"`)
+		elseif default.weaponType ~= class.weaponType then
+			table.insert(problems, `Classes.{id}: defaultVariation is not a {class.weaponType}`)
+		end
+	end
+	if not Classes[CombatSettings.DefaultClass] then
+		table.insert(
+			problems,
+			`CombatSettings.DefaultClass "{tostring(CombatSettings.DefaultClass)}" is not a class`
+		)
 	end
 
 	table.sort(problems)

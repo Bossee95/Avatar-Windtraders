@@ -19,6 +19,7 @@ local Variations = require(Config.Variations)
 local WeaponTypes = require(Config.WeaponTypes)
 local GAbilities = require(Config.GAbilities)
 local CombatSettings = require(Config.CombatSettings)
+local Classes = require(Config.Classes)
 
 local CombatRules = {}
 
@@ -107,7 +108,8 @@ function CombatRules.canEquip(
 	variationId: any,
 	ownsVariation: boolean,
 	state: State?,
-	currentVariationId: string?
+	currentVariationId: string?,
+	classId: string?
 ): (boolean, string?)
 	if type(variationId) ~= "string" then
 		return false, "InvalidVariation"
@@ -118,6 +120,10 @@ function CombatRules.canEquip(
 	end
 	if currentVariationId == variationId then
 		return false, "AlreadyEquipped"
+	end
+	-- A class locks the character to one weapon type.
+	if classId ~= nil and CombatRules.classWeaponType(classId) ~= variation.weaponType then
+		return false, "WrongClass"
 	end
 	if not ownsVariation then
 		return false, "NotOwned"
@@ -134,6 +140,43 @@ function CombatRules.canEquip(
 		return false, blocked
 	end
 	return true, nil
+end
+
+-- The weapon type a class is locked to, or nil for an unknown class.
+function CombatRules.classWeaponType(classId: string?): string?
+	local class = classId and Classes[classId]
+	return class and class.weaponType
+end
+
+-- The class to use: the stored one if valid, otherwise the default.
+function CombatRules.resolveClass(classId: any): string
+	if type(classId) == "string" and Classes[classId] then
+		return classId
+	end
+	return CombatSettings.DefaultClass
+end
+
+-- Which variation a class-locked character wields: the first owned
+-- variation of the class's weapon type (sorted by id, so it is stable),
+-- else the class's default. `owns` answers ownership per variation id.
+function CombatRules.pickClassWeapon(classId: string, owns: (string) -> boolean): (string?, boolean)
+	local class = Classes[classId]
+	if not class then
+		return nil, false
+	end
+	local candidates = {}
+	for id, variation in Variations do
+		if variation.weaponType == class.weaponType then
+			table.insert(candidates, id)
+		end
+	end
+	table.sort(candidates)
+	for _, id in candidates do
+		if owns(id) then
+			return id, true
+		end
+	end
+	return class.defaultVariation, false
 end
 
 function CombatRules.canUnequip(state: State?): (boolean, string?)
