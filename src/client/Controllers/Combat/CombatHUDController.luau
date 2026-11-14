@@ -31,7 +31,8 @@ local function make(className: string, props: { [string]: any }, parent: Instanc
 end
 
 local function pips(filled: number, total: number): string
-	return string.rep("■", math.max(0, filled)) .. string.rep("□", math.max(0, total - filled))
+	-- Plain ASCII: the game font has no box glyphs.
+	return string.format("%d/%d", math.max(0, filled), total)
 end
 
 function CombatHUDController:Start()
