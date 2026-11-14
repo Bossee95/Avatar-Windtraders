@@ -327,8 +327,8 @@ function StaffPanelController:Start()
 
 	local r4 = row(actions, 5)
 	label("G ability", r4, 60)
-	local ability = picker(sortedKeys(GAbilities), r4, 150)
-	local source = picker({ "Lore", "Event", "Contribution", "Purchase" }, r4, 110)
+	local ability = picker(sortedKeys(GAbilities), r4, 130)
+	local source = picker({ "Lore", "Event", "Contribution", "Purchase" }, r4, 100)
 	button("Grant", r4, COLORS.go, 70).Activated:Connect(withPlayer(function(p)
 		return "/gability " .. p .. " grant " .. ability() .. " " .. source() .. n()
 	end))
@@ -462,6 +462,11 @@ function StaffPanelController:Start()
 	end)
 
 	showTab("Players")
+	gui:GetPropertyChangedSignal("Enabled"):Connect(function()
+		if gui.Enabled then
+			refreshPlayers()
+		end
+	end)
 
 	-- L toggles. The server refuses non-staff, so the panel never opens for them.
 	UserInputService.InputBegan:Connect(function(input, processed)
