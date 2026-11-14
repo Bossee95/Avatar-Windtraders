@@ -15,7 +15,7 @@
 
 return table.freeze({
 	-- Roblox group that owns the community. 0 disables group checks.
-	GroupId = 0,
+	GroupId = 908952150, -- Windtraders community group
 
 	GroupRankRoles = table.freeze({
 		-- { MinRank = 200, Role = "Loreteam" },
@@ -36,7 +36,7 @@ return table.freeze({
 		-- Closed community gate. Turn off only for open playtests.
 		Enabled = true,
 		-- Group members at or above this rank may join. 0 = group membership not used.
-		MinGroupRank = 0,
+		MinGroupRank = 1, -- any member of the group (rank 1+)
 		StaticWhitelist = table.freeze({
 			-- 123456789,
 		}) :: { number },
