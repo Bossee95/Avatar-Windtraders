@@ -164,6 +164,11 @@ function CombatRules.pickClassWeapon(classId: string, owns: (string) -> boolean)
 	if not class then
 		return nil, false
 	end
+	-- The class default always wins when owned, so owning extra variations
+	-- (or Studio grant-all) never changes the weapon a player spawns with.
+	if owns(class.defaultVariation) then
+		return class.defaultVariation, true
+	end
 	local candidates = {}
 	for id, variation in Variations do
 		if variation.weaponType == class.weaponType then

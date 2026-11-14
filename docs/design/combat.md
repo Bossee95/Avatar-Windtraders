@@ -159,8 +159,8 @@ stored per character in the `Combat` character section (wiped on Permanent
 Death) and defaults to `CombatSettings.DefaultClass` (Lancer).
 
 On spawn, and whenever `Revalidate` runs, the server equips the class weapon:
-the first owned variation of the class weapon type, else the class's
-`defaultVariation`. It needs a kit for that type, so a character with no kit
+the class's `defaultVariation` when owned (or unowned and nothing else is),
+otherwise the first owned variation of the class weapon type by id. It needs a kit for that type, so a character with no kit
 has no weapon until the Loreteam grants one. There is no client equip remote
 and no weapon hotkeys.
 
