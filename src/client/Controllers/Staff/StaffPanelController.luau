@@ -6,7 +6,7 @@
 	phase) are buttons that cycle through what exists in config.
 
 	Tabs
-	  Players  pick someone in the server, then: view record, set rank,
+	  Players  pick someone in the server, then: view record, set rank, class,
 	           grant/revoke kits and G abilities, approve Trials, set
 	           faction, whitelist
 	  PD       status, start, phase, pause/resume, end, history
@@ -24,6 +24,7 @@ local UserInputService = game:GetService("UserInputService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Net = require(Shared.Net)
 local Kits = require(Shared.Combat.Config.Kits)
+local Classes = require(Shared.Combat.Config.Classes)
 local GAbilities = require(Shared.Combat.Config.GAbilities)
 local WorldConfig = require(Shared.Config.WorldConfig)
 local PDPhases = require(Shared.PDEvent.PDPhases)
@@ -78,7 +79,7 @@ function StaffPanelController:Start()
 	local frame = make("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.new(0, 680, 0, 500),
+		Size = UDim2.new(0, 680, 0, 540),
 		BackgroundColor3 = COLORS.bg,
 		BorderSizePixel = 0,
 	}, gui)
@@ -308,8 +309,17 @@ function StaffPanelController:Start()
 		return "/rank " .. p .. " " .. (if rankBox.Text ~= "" then rankBox.Text else "0") .. n()
 	end))
 
-	local r3 = row(actions, 4)
-	label("Kit", r3, 60)
+	-- Class locks the character to one weapon (Lancer = spear only); the
+	-- server equips it automatically. The kit row sets that weapon's level.
+	local rc = row(actions, 4)
+	label("Class", rc, 60)
+	local class = picker(sortedKeys(Classes), rc, 130)
+	button("Set class", rc, COLORS.go).Activated:Connect(withPlayer(function(p)
+		return "/class " .. p .. " " .. class()
+	end))
+
+	local r3 = row(actions, 5)
+	label("Kit level", r3, 60)
 	local weapon = picker(sortedKeys(Kits), r3, 110)
 	local levelBox = field("level", r3, 50)
 	button("Grant", r3, COLORS.go, 70).Activated:Connect(withPlayer(function(p)
@@ -325,7 +335,7 @@ function StaffPanelController:Start()
 		return "/kit " .. p .. " revoke " .. weapon() .. n()
 	end))
 
-	local r4 = row(actions, 5)
+	local r4 = row(actions, 6)
 	label("G ability", r4, 60)
 	local ability = picker(sortedKeys(GAbilities), r4, 130)
 	local source = picker({ "Lore", "Event", "Contribution", "Purchase" }, r4, 100)
@@ -337,7 +347,7 @@ function StaffPanelController:Start()
 	end))
 
 	local factionKeys = sortedKeys(WorldConfig.Factions)
-	local r5 = row(actions, 6)
+	local r5 = row(actions, 7)
 	label("Faction", r5, 60)
 	local faction = picker(factionKeys, r5, 120)
 	local roleBox = field("role key", r5, 110)
@@ -350,7 +360,7 @@ function StaffPanelController:Start()
 		return "/faction " .. p .. " " .. f .. " " .. role .. n()
 	end))
 
-	local r6 = row(actions, 7)
+	local r6 = row(actions, 8)
 	label("Access", r6, 60)
 	button("Whitelist", r6, COLORS.go).Activated:Connect(withPlayer(function(p)
 		return "/whitelist add " .. p .. n()
