@@ -44,7 +44,7 @@ SettingsConfig.List = {
 		label = "Low graphics",
 		kind = "Toggle",
 		default = false,
-		help = "Turns off shadows, post effects and particles for a smoother frame rate.",
+		help = "Turns off shadows and post-processing effects for a smoother frame rate.",
 	},
 	{
 		key = "showHitboxes",

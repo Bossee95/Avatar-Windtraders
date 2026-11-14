@@ -37,6 +37,7 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Net = require(Shared.Net)
 local WorldConfig = require(Shared.Config.WorldConfig)
 local Variations = require(Shared.Combat.Config.Variations)
 local WeaponTypes = require(Shared.Combat.Config.WeaponTypes)
@@ -50,6 +51,9 @@ local InventoryController = require(script.Parent.InventoryController)
 local Theme = require(script.Parent.InventoryUI.Theme)
 local ItemIcons = require(script.Parent.InventoryUI.ItemIcons)
 local CharacterPreview = require(script.Parent.InventoryUI.CharacterPreview)
+local CustomisePage = require(script.Parent.InventoryUI.Pages.CustomisePage)
+local SkillsPage = require(script.Parent.InventoryUI.Pages.SkillsPage)
+local SettingsPage = require(script.Parent.InventoryUI.Pages.SettingsPage)
 
 local C = Theme.Colors
 local F = Theme.Fonts
@@ -111,6 +115,9 @@ local TABS: { Tab } = {
 
 local SORTS = { "Name", "Amount", "Newest" }
 
+-- The screen's pages, shown as tabs across the top (keys 1-4, LT / RT).
+local PAGES = { "Inventory", "Customise", "Skills", "Settings" }
+
 local CATEGORY_NAMES: { [string]: string } = {
 	Weapon = "Weapon",
 	Material = "Material",
@@ -156,6 +163,10 @@ local detail: {
 	note: TextLabel,
 }
 local footer: Frame
+local inventoryPage: Frame
+local pageTabs: { [string]: { button: TextButton, bar: Frame } } = {}
+local pages: { [string]: any } = {}
+local currentPage = "Inventory"
 
 local isOpen = false
 local currentTab = TABS[3].key
@@ -586,7 +597,8 @@ local function renderTabs()
 		end
 		local count = #entriesFor(tab.key)
 		parts.count.Text = tostring(count)
-		parts.count.Parent.Visible = count > 0
+		local badge = parts.count.Parent :: GuiObject
+		badge.Visible = count > 0
 		if active then
 			tabTitle.Text = tab.label
 			emptyLabel.Text = tab.empty
@@ -698,20 +710,55 @@ local function buildHeader()
 		Size = UDim2.new(1, 0, 0, 96),
 		BackgroundTransparency = 1,
 	}, root)
-	label({
-		Text = "INVENTORY",
+	-- Page tabs: always labelled, with their number key.
+	local row = make("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 18),
-		Size = UDim2.fromOffset(500, 46),
-		Font = F.Title,
-		TextSize = 42,
-		TextXAlignment = Enum.TextXAlignment.Center,
+		Position = UDim2.new(0.5, 0, 0, 16),
+		Size = UDim2.fromOffset(4 * 150 + 3 * 8, 60),
+		BackgroundTransparency = 1,
 	}, header)
-	Theme.flourish(header, UDim2.new(0.5, 0, 0, 74), 260)
+	make("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		Padding = UDim.new(0, 8),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+	}, row)
+	for index, name in PAGES do
+		local button = make("TextButton", {
+			Size = UDim2.fromOffset(150, 52),
+			Text = "",
+			AutoButtonColor = false,
+			BackgroundTransparency = 1,
+			LayoutOrder = index,
+		}, row)
+		label({
+			Name = "Title",
+			Size = UDim2.new(1, 0, 0, 34),
+			Text = string.upper(name),
+			Font = F.Title,
+			TextSize = 24,
+			TextXAlignment = Enum.TextXAlignment.Center,
+		}, button)
+		label({
+			Name = "Key",
+			Position = UDim2.fromOffset(0, 32),
+			Size = UDim2.new(1, 0, 0, 14),
+			Text = tostring(index),
+			Font = F.Heading,
+			TextSize = 11,
+			TextColor3 = C.TextFaint,
+			TextXAlignment = Enum.TextXAlignment.Center,
+		}, button)
+		local bar = Theme.flourish(button, UDim2.new(0.5, 0, 1, 2), 120)
+		button.Activated:Connect(function()
+			InventoryScreenController:ShowPage(name)
+		end)
+		pageTabs[name] = { button = button, bar = bar }
+	end
 
 	characterLabel = label({
 		Position = UDim2.fromOffset(56, 30),
-		Size = UDim2.fromOffset(520, 30),
+		Size = UDim2.fromOffset(400, 30),
+		TextTruncate = Enum.TextTruncate.AtEnd,
 		Font = F.Medium,
 		TextSize = 18,
 		TextColor3 = C.TextDim,
@@ -772,7 +819,7 @@ local function buildItemsPanel()
 	local panel = Theme.panel({
 		Position = UDim2.fromOffset(48, 104),
 		Size = UDim2.fromOffset(COLUMNS * TILE + (COLUMNS - 1) * GAP + 56, 712),
-	}, root)
+	}, inventoryPage)
 
 	-- Category tabs: icon + name, always labelled.
 	local strip = make("Frame", {
@@ -910,7 +957,7 @@ local function buildDetailPanel()
 	local panel = Theme.panel({
 		Position = UDim2.fromOffset(panelX, 104),
 		Size = UDim2.fromOffset(440, 712),
-	}, root)
+	}, inventoryPage)
 	-- Accent edge on the left, like a leaf vein.
 	local edge = make("Frame", {
 		Position = UDim2.fromOffset(0, 24),
@@ -1069,10 +1116,20 @@ local function buildPreview()
 	}, area)
 end
 
-local HINTS = {
+type Hint = { keyboard: string, gamepad: string, text: string }
+
+local INVENTORY_HINTS: { Hint } = {
+	{ keyboard = "1-4", gamepad = "LT  RT", text = "Page" },
 	{ keyboard = "Q  E", gamepad = "LB  RB", text = "Category" },
 	{ keyboard = "Arrows", gamepad = "D-pad", text = "Move" },
 	{ keyboard = "T", gamepad = "Y", text = "Sort" },
+	{ keyboard = "Drag", gamepad = "RS", text = "Turn" },
+	{ keyboard = "M", gamepad = "B", text = "Close" },
+}
+
+local PAGE_HINTS: { Hint } = {
+	{ keyboard = "1-4", gamepad = "LT  RT", text = "Page" },
+	{ keyboard = "Click", gamepad = "A", text = "Choose" },
 	{ keyboard = "Drag", gamepad = "RS", text = "Turn" },
 	{ keyboard = "M", gamepad = "B", text = "Close" },
 }
@@ -1085,7 +1142,8 @@ local function renderFooter()
 	end
 	local gamepad = UserInputService.GamepadEnabled
 		and string.find(UserInputService:GetLastInputType().Name, "Gamepad") ~= nil
-	for index, hint in HINTS do
+	local hints: { Hint } = if currentPage == "Inventory" then INVENTORY_HINTS else PAGE_HINTS
+	for index, hint in hints do
 		Theme.keyHint(footer, if gamepad then hint.gamepad else hint.keyboard, hint.text, index)
 	end
 end
@@ -1202,12 +1260,58 @@ local MENU_KEYS: { Enum.KeyCode } = {
 	Enum.KeyCode.DPadRight,
 	Enum.KeyCode.Thumbstick1,
 	Enum.KeyCode.Thumbstick2,
+	Enum.KeyCode.One,
+	Enum.KeyCode.Two,
+	Enum.KeyCode.Three,
+	Enum.KeyCode.Four,
+	Enum.KeyCode.ButtonL2,
+	Enum.KeyCode.ButtonR2,
 }
+
+local PAGE_KEYS: { [Enum.KeyCode]: number } = {
+	[Enum.KeyCode.One] = 1,
+	[Enum.KeyCode.Two] = 2,
+	[Enum.KeyCode.Three] = 3,
+	[Enum.KeyCode.Four] = 4,
+}
+
+-- On the other pages the gamepad moves between buttons with Roblox's own
+-- selection, so these pass through instead of being handled here.
+local GAMEPAD_NAV: { [Enum.KeyCode]: boolean } = {
+	[Enum.KeyCode.DPadUp] = true,
+	[Enum.KeyCode.DPadDown] = true,
+	[Enum.KeyCode.DPadLeft] = true,
+	[Enum.KeyCode.DPadRight] = true,
+	[Enum.KeyCode.Thumbstick1] = true,
+	[Enum.KeyCode.ButtonA] = true,
+}
+
+local function pageIndex(): number
+	return table.find(PAGES, currentPage) or 1
+end
 
 local stickHeld = false
 
 local function onMenuInput(_: string, inputState: Enum.UserInputState, input: InputObject)
 	local key = input.KeyCode
+	if inputState == Enum.UserInputState.Begin then
+		local page = PAGE_KEYS[key]
+		if page then
+			InventoryScreenController:ShowPage(PAGES[page])
+			return Enum.ContextActionResult.Sink
+		elseif key == Enum.KeyCode.ButtonL2 or key == Enum.KeyCode.ButtonR2 then
+			local delta = if key == Enum.KeyCode.ButtonL2 then -1 else 1
+			InventoryScreenController:ShowPage(PAGES[(pageIndex() - 1 + delta) % #PAGES + 1])
+			return Enum.ContextActionResult.Sink
+		elseif key == Enum.KeyCode.ButtonB then
+			InventoryScreenController:Close()
+			return Enum.ContextActionResult.Sink
+		end
+	end
+	if currentPage ~= "Inventory" and key ~= Enum.KeyCode.Thumbstick2 then
+		-- Grid keys only act on the Inventory page. Movement keys stay sunk.
+		return if GAMEPAD_NAV[key] then Enum.ContextActionResult.Pass else Enum.ContextActionResult.Sink
+	end
 	if key == Enum.KeyCode.Thumbstick2 then
 		if math.abs(input.Position.X) > 0.2 then
 			preview:Rotate(input.Position.X * 0.08)
@@ -1246,8 +1350,6 @@ local function onMenuInput(_: string, inputState: Enum.UserInputState, input: In
 		moveSelection(1, 0)
 	elseif key == Enum.KeyCode.T or key == Enum.KeyCode.ButtonY then
 		cycleSort()
-	elseif key == Enum.KeyCode.ButtonB then
-		InventoryScreenController:Close()
 	end
 	return Enum.ContextActionResult.Sink
 end
@@ -1255,6 +1357,37 @@ end
 local function canOpen(): boolean
 	return CharacterController:GetActiveCharacter() ~= nil
 		and (UIState.GetOpenMenu() == nil or UIState.GetOpenMenu() == MENU_NAME)
+end
+
+-- Switches the page shown on the left (Inventory, Customise, Skills,
+-- Settings). The 3D preview stays on the right for all of them.
+function InventoryScreenController:ShowPage(name: string)
+	if not table.find(PAGES, name) then
+		return
+	end
+	currentPage = name
+	for pageName, tab in pageTabs do
+		local active = pageName == name
+		local title = tab.button:FindFirstChild("Title") :: TextLabel
+		title.TextColor3 = if active then C.Text else C.TextFaint
+		title.TextSize = if active then 26 else 20
+		tab.bar.Visible = active
+	end
+	inventoryPage.Visible = name == "Inventory"
+	for pageName, page in pages do
+		if pageName == name then
+			page:Show()
+		else
+			page:Hide()
+		end
+	end
+	if name == "Inventory" and isOpen then
+		renderAll()
+	end
+	if GuiService.SelectedObject and GuiService.SelectedObject:IsDescendantOf(gui) then
+		GuiService.SelectedObject = nil
+	end
+	renderFooter()
 end
 
 function InventoryScreenController:IsOpen(): boolean
@@ -1281,7 +1414,7 @@ function InventoryScreenController:Open()
 
 	updateScale()
 	renderAll()
-	renderFooter()
+	InventoryScreenController:ShowPage(currentPage)
 
 	gui.Enabled = true
 	-- After enabling, so the viewport has its real size for framing.
@@ -1375,11 +1508,39 @@ function InventoryScreenController:Start()
 
 	blur = make("BlurEffect", { Name = "InventoryBlur", Size = 0 })
 
+	inventoryPage = make("Frame", {
+		Name = "InventoryPage",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+	}, root)
+	-- The other pages fill the space the item grid and detail panel use.
+	local pageHost = make("Frame", {
+		Name = "Pages",
+		Position = UDim2.fromOffset(48, 104),
+		Size = UDim2.fromOffset(COLUMNS * TILE + (COLUMNS - 1) * GAP + 56 + 24 + 440, 712),
+		BackgroundTransparency = 1,
+	}, root)
+	local ctx = {
+		refreshPreview = function()
+			if isOpen then
+				preview:Refresh()
+			end
+		end,
+	}
+
 	buildHeader()
 	buildItemsPanel()
 	buildDetailPanel()
 	buildPreview()
+	pages.Customise = CustomisePage.new(pageHost, ctx)
+	pages.Skills = SkillsPage.new(pageHost, ctx)
+	pages.Settings = SettingsPage.new(pageHost, ctx)
 	buildFooter()
+	InventoryScreenController:ShowPage("Inventory")
+
+	Net.OnEvent("CosmeticsState", function(state)
+		pages.Customise:SetState(state)
+	end)
 	buildLauncher(playerGui)
 	updateScale()
 
@@ -1407,9 +1568,14 @@ function InventoryScreenController:Start()
 			renderAll()
 		end
 	end)
-	CombatController.StateChanged:Connect(function()
-		if isOpen then
+	local lastVariation: string? = nil
+	CombatController.StateChanged:Connect(function(state)
+		local weaponChanged = state.variationId ~= lastVariation
+		lastVariation = state.variationId
+		if isOpen and currentPage == "Inventory" then
 			renderAll()
+		end
+		if isOpen and weaponChanged then
 			-- The weapon model is welded on by the server; give it a moment
 			-- to replicate before copying the character again.
 			task.delay(0.3, function()

@@ -56,8 +56,8 @@ local function applyLowGraphics(on: boolean)
 		local effects = {}
 		for _, child in Lighting:GetChildren() do
 			if isPostEffect(child) then
-				effects[child] = (child :: PostEffect).Enabled
-				;(child :: PostEffect).Enabled = false
+				effects[child] = (child :: PostEffect).Enabled;
+				(child :: PostEffect).Enabled = false
 			end
 		end
 		savedLighting = { shadows = Lighting.GlobalShadows, effects = effects }
@@ -127,8 +127,8 @@ function SettingsController:Start()
 	-- Effects added later (e.g. by a map) also respect low graphics.
 	Lighting.ChildAdded:Connect(function(child)
 		if savedLighting and isPostEffect(child) then
-			savedLighting.effects[child] = (child :: PostEffect).Enabled
-			;(child :: PostEffect).Enabled = false
+			savedLighting.effects[child] = (child :: PostEffect).Enabled;
+			(child :: PostEffect).Enabled = false
 		end
 	end)
 end
